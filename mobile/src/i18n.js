@@ -64,6 +64,10 @@ export const translations = {
     changeVideo: "Change Video",
     takePhoto: "Take Photo",
     takeVideo: "Record Video",
+    complaintSubmitted: "Complaint Submitted Successfully!",
+    complaintIdLabel: "Complaint ID",
+    fileMoreIssues: "File More Issues",
+    trackMyComplaint: "Track My Complaint",
   },
   hi: {
     appTitle: "जनआवाज़",
@@ -125,6 +129,10 @@ export const translations = {
     changeVideo: "वीडियो बदलें",
     takePhoto: "फोटो लें",
     takeVideo: "वीडियो रिकॉर्ड करें",
+    complaintSubmitted: "शिकायत सफलतापूर्वक दर्ज की गई!",
+    complaintIdLabel: "शिकायत आईडी",
+    fileMoreIssues: "अधिक शिकायतें दर्ज करें",
+    trackMyComplaint: "मेरी शिकायत ट्रैक करें",
   },
   mr: {
     appTitle: "जनआवाज",
@@ -186,6 +194,10 @@ export const translations = {
     changeVideo: "व्हिडिओ बदला",
     takePhoto: "फोटो काढा",
     takeVideo: "व्हिडिओ रेकॉर्ड करा",
+    complaintSubmitted: "तक्रार यशस्वीरित्या नोंदवली गेली!",
+    complaintIdLabel: "तक्रार आयडी",
+    fileMoreIssues: "आणखी तक्रारी नोंदवा",
+    trackMyComplaint: "माझी तक्रार ट्रॅक करा",
   },
   kn: {
     appTitle: "ಜನಆವಾಜ್",
@@ -247,6 +259,10 @@ export const translations = {
     changeVideo: "ವೀಡಿಯೋ ಬದಲಿಸಿ",
     takePhoto: "ಫೋಟೋ ತೆಗೆದುಕೊಳ್ಳಿ",
     takeVideo: "ವೀಡಿಯೋ ರೆಕಾರ್ಡ್ ಮಾಡಿ",
+    complaintSubmitted: "ದೂರನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!",
+    complaintIdLabel: "ದೂರು ಐಡಿ",
+    fileMoreIssues: "ಹೆಚ್ಚಿನ ದೂರುಗಳನ್ನು ದಾಖಲಿಸಿ",
+    trackMyComplaint: "ನನ್ನ ದೂರನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ",
   },
 };
 

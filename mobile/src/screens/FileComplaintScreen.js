@@ -254,6 +254,20 @@ export default function FileComplaintScreen({ navigation }) {
   const [loadingNgos, setLoadingNgos] = useState(false);
 
   const [voiceUri, setVoiceUri] = useState(null);
+  const [submittedId, setSubmittedId] = useState(null);
+
+  const resetForm = () => {
+    setStep(1);
+    setDescription("");
+    setVoiceUri(null);
+    setMedia(null);
+    setCitizenPhone("");
+    setSubmittedId(null);
+    setError("");
+    setSharePublic(false);
+    setPrimaryChannel("GOVERNMENT");
+    setSelectedNgoId(null);
+  };
 
   const sharePublicValue = sharePublic === true || sharePublic === "true";
 
@@ -457,7 +471,9 @@ export default function FileComplaintScreen({ navigation }) {
       const { complaintId, ackMessage } = data || {};
       if (!complaintId) throw new Error("Server did not return complaintId");
       await addMyComplaintId(complaintId);
-      navigation.navigate("Tracking", { complaintId, justSubmittedAck: ackMessage || "" });
+      
+      setSubmittedId(complaintId);
+      setStep(3);
     } catch (e) {
       setError(e?.message || "Submission failed");
     } finally {
@@ -479,7 +495,39 @@ export default function FileComplaintScreen({ navigation }) {
           </View>
         ) : null}
 
-        {step === 1 ? (
+        {step === 3 ? (
+          <View style={styles.successCard}>
+            <View style={styles.successIconBg}>
+              <Ionicons name="checkmark-sharp" size={40} color="#fff" />
+            </View>
+            <Text style={styles.successTitle}>{t("complaintSubmitted")}</Text>
+            
+            <View style={styles.idCard}>
+              <Text style={styles.idLabel}>{t("complaintIdLabel")}</Text>
+              <Text style={styles.idValue}>{submittedId}</Text>
+            </View>
+
+            <View style={styles.successSummaryBox}>
+              <Text style={styles.successSummaryTitle}>Summary</Text>
+              <Text style={styles.successSummaryText} numberOfLines={4}>{description}</Text>
+            </View>
+
+            <View style={{ gap: 12, marginTop: 10 }}>
+              <Pressable style={styles.successBtn} onPress={resetForm}>
+                <Ionicons name="add-circle" size={20} color="#fff" />
+                <Text style={styles.successBtnText}>{t("fileMoreIssues")}</Text>
+              </Pressable>
+
+              <Pressable 
+                style={[styles.successBtn, { backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0" }]} 
+                onPress={() => navigation.navigate("Tracking", { complaintId: submittedId })}
+              >
+                <Ionicons name="analytics" size={20} color="#475569" />
+                <Text style={[styles.successBtnText, { color: "#475569" }]}>{t("trackMyComplaint")}</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : step === 1 ? (
           <>
             {/* Mode toggle */}
             <ModeToggle mode={inputMode} onChange={handleModeChange} t={t} />
@@ -924,4 +972,90 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   submitText: { color: "#fff", fontWeight: "900", fontSize: 16 },
+
+  // Success Screen
+  successCard: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 24,
+    gap: 20,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 3,
+    marginTop: 10,
+  },
+  successIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#16a34a",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 8,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#1e293b",
+    textAlign: "center",
+    lineHeight: 28,
+  },
+  idCard: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderStyle: "dashed",
+  },
+  idLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  idValue: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: "#0f172a",
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
+  successSummaryBox: {
+    backgroundColor: "#f1f5f9",
+    borderRadius: 14,
+    padding: 16,
+  },
+  successSummaryTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#475569",
+    marginBottom: 6,
+  },
+  successSummaryText: {
+    fontSize: 14,
+    color: "#1e293b",
+    lineHeight: 20,
+    fontStyle: "italic",
+  },
+  successBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#2563eb",
+    borderRadius: 14,
+    paddingVertical: 16,
+  },
+  successBtnText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 15,
+  },
 });
