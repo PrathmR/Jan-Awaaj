@@ -156,18 +156,18 @@ function parseActionInput(rawAction) {
 router.post("/summarize", upload.fields([{ name: "voice", maxCount: 1 }]), async (req, res, next) => {
   try {
     const language = req.body.language || "en";
-    let summary = "";
+    let result;
 
     if (req.files && req.files["voice"] && req.files["voice"].length > 0) {
       const voiceFile = req.files["voice"][0];
-      summary = await processAudioQuery(voiceFile.path, voiceFile.mimetype, language);
+      result = await processAudioQuery(voiceFile.path, voiceFile.mimetype, language);
     } else if (req.body.description) {
-      summary = await processTextQuery(req.body.description, language);
+      result = await processTextQuery(req.body.description, language);
     } else {
       return res.status(400).json({ error: "No voice or text provided" });
     }
 
-    return res.json({ summary });
+    return res.json(result);
   } catch (e) {
     return next(e);
   }
@@ -194,12 +194,17 @@ router.post("/", upload.fields([{ name: "photo", maxCount: 1 }, { name: "voice",
     const photoUrl = photoFile ? `/uploads/${photoFile.filename}` : (req.body.photoUrl || "");
 
     let description = parsed.data.description;
+    let category = parsed.data.category;
+
     if (req.body.isSummarized !== "true") {
+      let result;
       if (req.body.hasVoiceRecording === "true" && voiceFile) {
-        description = await processAudioQuery(voiceFile.path, voiceFile.mimetype, req.body.language || "en");
+        result = await processAudioQuery(voiceFile.path, voiceFile.mimetype, req.body.language || "en");
       } else {
-        description = await processTextQuery(description, req.body.language || "en");
+        result = await processTextQuery(description, req.body.language || "en");
       }
+      description = result.summary;
+      if (result.category) category = result.category;
     }
 
     // ── Org targeting (optional) ──
@@ -226,7 +231,7 @@ router.post("/", upload.fields([{ name: "photo", maxCount: 1 }, { name: "voice",
       citizenPhone: parsed.data.citizenPhone || "",
       lat: parsed.data.lat,
       lon: parsed.data.lon,
-      category: parsed.data.category,
+      category: category,
       description: description,
       photoUrl,
       sharePublic: parsed.data.sharePublic,

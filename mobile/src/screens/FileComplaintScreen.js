@@ -363,6 +363,9 @@ export default function FileComplaintScreen({ navigation }) {
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
       setDescription(data.summary);
+      if (data.category) {
+        setCategory(data.category);
+      }
       setStep(2);
     } catch (e) {
       setError(e?.message || "Summarization failed");

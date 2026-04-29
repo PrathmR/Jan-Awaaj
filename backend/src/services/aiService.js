@@ -17,17 +17,26 @@ function getAiClient() {
 
 const SUMMARIZE_SYSTEM_INSTRUCTION = `You are an AI assistant for the Jan Awaaj complaint system.
 Your task is to take a citizen's unstructured complaint and format it into a structured summary for the authority.
-Please output EXACTLY in this format, and dynamically translate it to English if it is in another language:
-**Summary**: [Brief 1-2 sentence summary of the issue]
-**Key Details**:
+
+IMPORTANT: You MUST return a valid JSON object with EXACTLY two keys: "summary" and "category".
+
+1. "summary" field:
+You must generate a summary text using EXACTLY the following structure, but TRANSLATE the headings themselves ("Summary", "Key Details", "Location Mentions", "Urgency") into the requested target language. Ensure the headings are surrounded by double asterisks (**).
+The summary text should look like this (but with headings in the target language):
+**[Translated 'Summary']**: [Brief 1-2 sentence summary of the issue]
+**[Translated 'Key Details']**:
 - [Detail 1]
 - [Detail 2]
-**Location Mentions**: [Any specific locations or landmarks mentioned, or "None"]
-**Urgency**: [Low/Medium/High based on the issue]`;
+**[Translated 'Location Mentions']**: [Any specific locations or landmarks mentioned, or translated 'None']
+**[Translated 'Urgency']**: [Translated 'Low', 'Medium', or 'High'. If no urgency is mentioned, default to 'Medium']
+
+2. "category" field:
+You must select EXACTLY ONE of the following English categories that best fits the complaint:
+"Public Works", "Water Supply", "Electricity", "Roads & Transport", "Health Services", "Education", "Sanitation", "Other".`;
 
 async function processTextQuery(text, targetLanguage = "en") {
   const client = getAiClient();
-  if (!client) return text; // Fallback to original text
+  if (!client) return { summary: text, category: "Other" }; // Fallback
 
   try {
     const response = await client.models.generateContent({
@@ -36,18 +45,19 @@ async function processTextQuery(text, targetLanguage = "en") {
       config: {
         systemInstruction: SUMMARIZE_SYSTEM_INSTRUCTION,
         temperature: 0.2,
+        responseMimeType: "application/json",
       },
     });
-    return response.text;
+    return JSON.parse(response.text);
   } catch (error) {
     console.error("AI Text processing error:", error);
-    return text;
+    return { summary: text, category: "Other" };
   }
 }
 
 async function processAudioQuery(filePath, mimeType, targetLanguage = "en") {
   const client = getAiClient();
-  if (!client) return "Voice complaint (AI transcription unavailable due to missing API key)";
+  if (!client) return { summary: "Voice complaint (AI transcription unavailable due to missing API key)", category: "Other" };
 
   try {
     const uploadResult = await client.files.upload({
@@ -71,6 +81,7 @@ async function processAudioQuery(filePath, mimeType, targetLanguage = "en") {
       config: {
         systemInstruction: SUMMARIZE_SYSTEM_INSTRUCTION,
         temperature: 0.2,
+        responseMimeType: "application/json",
       },
     });
     
@@ -81,10 +92,10 @@ async function processAudioQuery(filePath, mimeType, targetLanguage = "en") {
       console.warn("Failed to delete file from Gemini storage:", e);
     }
 
-    return response.text;
+    return JSON.parse(response.text);
   } catch (error) {
     console.error("AI Audio processing error:", error);
-    return "Voice complaint (Error during AI transcription/summarization)";
+    return { summary: "Voice complaint (Error during AI transcription/summarization)", category: "Other" };
   }
 }
 
