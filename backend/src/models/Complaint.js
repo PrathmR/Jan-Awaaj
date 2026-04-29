@@ -8,6 +8,15 @@ const UPDATE_STATUSES = [
   "resolved",
 ];
 
+const ACTION_TYPES = [
+  "INSPECTION",
+  "NOTICE_ISSUED",
+  "PAYMENT_CONFIRMED",
+  "REPAIR_COMPLETED",
+  "FORWARDED",
+  "OTHER",
+];
+
 const complaintUpdateSchema = new mongoose.Schema(
   {
     status: { type: String, enum: UPDATE_STATUSES, required: true },
@@ -21,6 +30,29 @@ const complaintUpdateSchema = new mongoose.Schema(
     actorId: { type: String, default: "" },
   },
   { _id: false, timestamps: { createdAt: true, updatedAt: false } }
+);
+
+const actionAttachmentSchema = new mongoose.Schema(
+  {
+    fileUrl: { type: String, required: true, trim: true },
+    proofType: { type: String, default: "PHOTO", trim: true },
+    uploadedAt: { type: Date, default: Date.now },
+  },
+  { _id: true }
+);
+
+const complaintActionSchema = new mongoose.Schema(
+  {
+    actionType: { type: String, enum: ACTION_TYPES, required: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, default: "", trim: true },
+    // Keep both so we can record either JWT user identity or API-key based actor label.
+    takenByUser: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    takenByLabel: { type: String, default: "", trim: true },
+    takenAt: { type: Date, default: Date.now },
+    attachments: { type: [actionAttachmentSchema], default: [] },
+  },
+  { _id: true }
 );
 
 const complaintSchema = new mongoose.Schema(
@@ -40,6 +72,7 @@ const complaintSchema = new mongoose.Schema(
     },
     resolvedAt: { type: Date, default: null },
     updates: { type: [complaintUpdateSchema], default: [] },
+    actions: { type: [complaintActionSchema], default: [] },
     sharePublic: { type: Boolean, default: false },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
@@ -48,5 +81,6 @@ const complaintSchema = new mongoose.Schema(
 module.exports = {
   Complaint: mongoose.model("Complaint", complaintSchema),
   UPDATE_STATUSES,
+  ACTION_TYPES,
 };
 
