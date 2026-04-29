@@ -7,6 +7,7 @@ const { z } = require("zod");
 const jwt = require("jsonwebtoken");
 
 const { Complaint, UPDATE_STATUSES, ACTION_TYPES } = require("../models/Complaint");
+const Counter = require("../models/Counter");
 const { Post } = require("../models/Post");
 const { AuditEvent } = require("../models/AuditEvent");
 const { Organization } = require("../models/Organization");
@@ -32,7 +33,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB
 
 const complaintIdParamSchema = z.object({
-  complaintId: z.string().uuid(),
+  complaintId: z.string().min(1),
 });
 
 const AUDIT_SENSITIVE_KEYS = new Set([
@@ -182,7 +183,15 @@ router.post("/", upload.fields([{ name: "photo", maxCount: 1 }, { name: "voice",
       return res.status(400).json({ error: msg });
     }
 
-    const complaintId = uuidv4();
+      // Generate sequential readable ID: JA0001, JA0002...
+      const counter = await Counter.findOneAndUpdate(
+        { id: "complaintId" },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      const seqStr = String(counter.seq).padStart(4, "0");
+      const complaintId = `JA${seqStr}`;
+      const citizenId = req.body.citizenId || "";
     
     let photoFile = null;
     let voiceFile = null;
@@ -228,6 +237,7 @@ router.post("/", upload.fields([{ name: "photo", maxCount: 1 }, { name: "voice",
 
     const complaint = await Complaint.create({
       complaintId,
+      citizenId,
       citizenPhone: parsed.data.citizenPhone || "",
       lat: parsed.data.lat,
       lon: parsed.data.lon,
@@ -299,6 +309,19 @@ router.get("/", requireAuthority, async (req, res, next) => {
     if (createdAfter) filter.createdAt = { $gte: new Date(String(createdAfter)) };
 
     const complaints = await Complaint.find(filter).sort({ createdAt: -1 }).limit(200);
+    return res.json({ complaints });
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.get("/my", async (req, res, next) => {
+  try {
+    const citizenId = req.query.citizenId || req.headers["x-citizen-id"];
+    if (!citizenId) {
+      return res.status(400).json({ error: "Missing citizenId" });
+    }
+    const complaints = await Complaint.find({ citizenId }).sort({ createdAt: -1 }).limit(100);
     return res.json({ complaints });
   } catch (e) {
     return next(e);

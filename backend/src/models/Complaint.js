@@ -76,6 +76,7 @@ const complaintActionSchema = new mongoose.Schema(
 const complaintSchema = new mongoose.Schema(
   {
     complaintId: { type: String, unique: true, index: true, required: true },
+    citizenId: { type: String, index: true, default: "" },
     citizenPhone: { type: String, index: true, default: "" },
     lat: { type: Number, required: true, index: true },
     lon: { type: Number, required: true, index: true },

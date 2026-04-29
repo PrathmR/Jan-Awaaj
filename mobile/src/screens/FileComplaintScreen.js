@@ -18,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 
 import { getBackendUrl, backendFetch } from "../api/backend";
-import { addMyComplaintId } from "../api/storage";
+import { addMyComplaintId, ensureCitizenId } from "../api/storage";
 import { useLanguage } from "../i18n";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -444,6 +444,9 @@ export default function FileComplaintScreen({ navigation }) {
       formData.append("description", description.trim());
       formData.append("isSummarized", "true");
       formData.append("language", language);
+
+      const cId = await ensureCitizenId();
+      formData.append("citizenId", cId);
       
       if (inputMode === "voice" && voiceUri) {
         formData.append("hasVoiceRecording", "true");

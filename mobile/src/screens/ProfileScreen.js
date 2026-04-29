@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { getBackendUrl, setBackendUrl, getDefaultBackendUrl, backendFetch } from "../api/backend";
-import { clearMyComplaintIds, getMyComplaintIds } from "../api/storage";
+import { clearMyComplaintIds, getMyComplaintIds, ensureCitizenId } from "../api/storage";
 
 const STATUS_COLORS = {
   resolved: { bg: "#d1fae5", fg: "#065f46" },
@@ -25,13 +25,13 @@ const STATUS_COLORS = {
 function ComplaintCard({ complaint, onPress }) {
   const sc = STATUS_COLORS[complaint.status] || STATUS_COLORS.new;
   const statusLabel = (complaint.status || "new").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  const shortId = complaint.complaintId?.slice(0, 8) || "—";
+  const displayId = complaint.complaintId?.startsWith("JA") ? complaint.complaintId : (complaint.complaintId?.slice(0, 8) + "…");
 
   return (
     <Pressable style={styles.complaintCard} onPress={() => onPress(complaint.complaintId)}>
       <View style={styles.complaintCardHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.complaintId}>#{shortId}…</Text>
+          <Text style={styles.complaintId}>#{displayId}</Text>
           <Text style={styles.complaintCategory}>{complaint.category || "General"}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
@@ -56,21 +56,16 @@ export default function ProfileScreen({ navigation }) {
   const [testResult, setTestResult] = useState(null);
   const [complaints, setComplaints] = useState([]);
   const [loadingComplaints, setLoadingComplaints] = useState(false);
+  const [citizenId, setCitizenId] = useState("");
 
   const fetchComplaints = useCallback(async () => {
     try {
       setLoadingComplaints(true);
-      const ids = await getMyComplaintIds();
-      const results = [];
-      for (const id of ids.slice(0, 10)) {
-        try {
-          const data = await backendFetch(`/api/complaints/${id}`);
-          if (data?.complaint) results.push(data.complaint);
-        } catch {
-          // Skip failed fetches
-        }
-      }
-      setComplaints(results);
+      const cId = await ensureCitizenId();
+      setCitizenId(cId);
+      
+      const data = await backendFetch(`/api/complaints/my?citizenId=${cId}`);
+      setComplaints(Array.isArray(data?.complaints) ? data.complaints : []);
     } catch {
       // ignore
     } finally {
@@ -135,6 +130,20 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.center}><ActivityIndicator color="#2563eb" /></View>
       ) : (
         <>
+          {/* ── My Identity ── */}
+          <View style={[styles.card, { backgroundColor: "#1e3a8a" }]}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="finger-print" size={18} color="#fff" />
+              <Text style={[styles.label, { color: "#fff" }]}>Jan Awaaj Identity</Text>
+            </View>
+            <View style={styles.idDisplayCard}>
+              <Text style={styles.idDisplayText}>{citizenId}</Text>
+            </View>
+            <Text style={[styles.help, { color: "#bfdbfe" }]}>
+              This unique ID is stored securely on your device. It allows you to track your complaints anonymously without sharing personal data.
+            </Text>
+          </View>
+
           {/* ── My Complaints ── */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -262,6 +271,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
+  },
+  idDisplayCard: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+  },
+  idDisplayText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: 1,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   label: { fontWeight: "800", color: "#1e293b", fontSize: 15, flex: 1 },

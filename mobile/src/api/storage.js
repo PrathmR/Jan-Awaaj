@@ -27,3 +27,25 @@ export async function clearMyComplaintIds() {
   await AsyncStorage.removeItem(MY_COMPLAINTS_KEY);
 }
 
+export async function getCitizenId() {
+  try {
+    return await AsyncStorage.getItem("citizenId");
+  } catch {
+    return null;
+  }
+}
+
+export async function ensureCitizenId() {
+  try {
+    let id = await AsyncStorage.getItem("citizenId");
+    if (!id) {
+      const random = () => Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+      id = `JA-CIT-${random()}-${random()}`;
+      await AsyncStorage.setItem("citizenId", id);
+    }
+    return id;
+  } catch {
+    return "JA-CIT-GUEST";
+  }
+}
+

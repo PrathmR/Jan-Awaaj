@@ -174,7 +174,7 @@ export default function TrackingScreen({ route }) {
                 >
                   <View style={styles.itemRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.itemTitle}>#{item.complaintId.slice(0, 8)}…</Text>
+                      <Text style={styles.itemTitle}>#{item.complaintId}</Text>
                       <Text style={styles.itemCategory}>{item.category || "General"}</Text>
                     </View>
                     <View style={[styles.itemStatusBadge, { backgroundColor: (sc[item.status] || "#94a3b8") + "18" }]}>
