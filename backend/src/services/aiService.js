@@ -28,7 +28,7 @@ The summary text should look like this (but with headings in the target language
 - [Detail 1]
 - [Detail 2]
 **[Translated 'Location Mentions']**: [Any specific locations or landmarks mentioned, or translated 'None']
-**[Translated 'Urgency']**: [Translated 'Low', 'Medium', or 'High'. If no urgency is mentioned, default to 'Medium']
+**[Translated 'Urgency']**: [Analyze the complaint severity and assign one of: Translated 'Low', 'Medium', 'High', or 'Very High']
 
 2. "category" field:
 You must select EXACTLY ONE of the following English categories that best fits the complaint:
