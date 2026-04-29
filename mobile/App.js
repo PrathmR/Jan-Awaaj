@@ -71,27 +71,27 @@ function MainTabs() {
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: t("appTitle"), tabBarLabel: "Home" }}
+        options={{ title: t("appTitle"), tabBarLabel: t("tab_Home") }}
       />
       <Tab.Screen
         name="FileComplaint"
         component={FileComplaintScreen}
-        options={{ title: t("submitComplaint"), tabBarLabel: "File", lazy: true }}
+        options={{ title: t("submitComplaint"), tabBarLabel: t("tab_File"), lazy: true }}
       />
       <Tab.Screen
         name="Tracking"
         component={TrackingScreen}
-        options={{ title: "Tracking", tabBarLabel: "Track" }}
+        options={{ title: t("title_Tracking"), tabBarLabel: t("tab_Track") }}
       />
       <Tab.Screen
         name="Organizations"
         component={OrganizationsScreen}
-        options={{ title: "Partners", tabBarLabel: "Orgs" }}
+        options={{ title: t("title_Partners"), tabBarLabel: t("tab_Orgs") }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: "Profile", tabBarLabel: "Profile" }}
+        options={{ title: t("title_Profile"), tabBarLabel: t("tab_Profile") }}
       />
     </Tab.Navigator>
   );

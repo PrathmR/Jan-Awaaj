@@ -477,7 +477,7 @@ export default function FileComplaintScreen({ navigation }) {
               {isSummarizing ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitText}>Summarize &gt;</Text>
+                <Text style={styles.submitText}>{t("summarizeBtn")}</Text>
               )}
             </Pressable>
           </>
@@ -486,9 +486,9 @@ export default function FileComplaintScreen({ navigation }) {
             {/* AI Summary View */}
             <View>
               <View style={[styles.rowBetween, { padding: 0, borderWidth: 0, marginBottom: 8 }]}>
-                <Label text="AI Summary" />
+                <Label text={t("aiSummary")} />
                 <Pressable onPress={() => setStep(1)}>
-                  <Text style={{ color: "#2563eb", fontWeight: "600", fontSize: 13 }}>Edit original</Text>
+                  <Text style={{ color: "#2563eb", fontWeight: "600", fontSize: 13 }}>{t("editOriginal")}</Text>
                 </Pressable>
               </View>
               <TextInput
@@ -540,12 +540,12 @@ export default function FileComplaintScreen({ navigation }) {
 
         {/* Who should receive this? */}
         <View>
-          <Label text="Who should receive this complaint?" />
+          <Label text={t("whoShouldReceive")} />
           <View style={styles.channelRow}>
             {[
-              { key: "GOVERNMENT", label: "Government", icon: "shield" },
-              { key: "NGO", label: "NGO Support", icon: "people" },
-              { key: "BOTH", label: "Both", icon: "git-merge" },
+              { key: "GOVERNMENT", label: t("target_Government"), icon: "shield" },
+              { key: "NGO", label: t("target_NGO"), icon: "people" },
+              { key: "BOTH", label: t("target_Both"), icon: "git-merge" },
             ].map((ch) => (
               <Pressable
                 key={ch.key}
@@ -570,7 +570,7 @@ export default function FileComplaintScreen({ navigation }) {
           {/* NGO selector (only if NGO or BOTH selected) */}
           {primaryChannel !== "GOVERNMENT" && ngos.length > 0 && (
             <View style={styles.ngoSelector}>
-              <Text style={styles.ngoSelectorLabel}>Select NGO partner:</Text>
+              <Text style={styles.ngoSelectorLabel}>{t("ngoSelectorLabel")}</Text>
               {ngos.map((ngo) => (
                 <Pressable
                   key={ngo.orgId}
