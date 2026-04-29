@@ -37,8 +37,7 @@ const postSchema = new mongoose.Schema(
     comments: { type: [postCommentSchema], default: [] },
 
     createdAt: { type: Date, default: Date.now },
-  },
-  { _id: false }
+  }
 );
 
 postSchema.index({ location: "2dsphere" });

@@ -9,6 +9,7 @@ const jwt = require("jsonwebtoken");
 const { Complaint, UPDATE_STATUSES, ACTION_TYPES } = require("../models/Complaint");
 const { Post } = require("../models/Post");
 const { AuditEvent } = require("../models/AuditEvent");
+const { Organization } = require("../models/Organization");
 const { requireAuthority } = require("../middleware/requireAuthority");
 const { recordAuditEvent } = require("../services/auditService");
 
@@ -27,7 +28,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage, limits: { fileSize: 8 * 1024 * 1024 } }); // 8MB
+const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB
 
 const complaintIdParamSchema = z.object({
   complaintId: z.string().uuid(),
@@ -155,11 +156,32 @@ router.post("/", upload.single("photo"), async (req, res, next) => {
   try {
     const parsed = complaintCreateSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.flatten() });
+      const e = parsed.error.flatten();
+      const msg = Object.values(e.fieldErrors).flat()[0] || e.formErrors[0] || "Invalid input parameters";
+      return res.status(400).json({ error: msg });
     }
 
     const complaintId = uuidv4();
     const photoUrl = req.file ? `/uploads/${req.file.filename}` : (req.body.photoUrl || "");
+
+    // ── Org targeting (optional) ──
+    let targetOrganizations = [];
+    let primaryChannel = "GOVERNMENT";
+    const rawOrgId = req.body.targetOrganizationId;
+    const rawChannel = req.body.primaryChannel;
+    if (rawOrgId) {
+      const org = await Organization.findOne({ orgId: String(rawOrgId), active: true });
+      if (org) {
+        targetOrganizations = [org._id];
+        primaryChannel = rawChannel && ["GOVERNMENT", "NGO", "BOTH"].includes(String(rawChannel).toUpperCase())
+          ? String(rawChannel).toUpperCase()
+          : "NGO";
+      }
+    } else if (rawChannel) {
+      primaryChannel = ["GOVERNMENT", "NGO", "BOTH"].includes(String(rawChannel).toUpperCase())
+        ? String(rawChannel).toUpperCase()
+        : "GOVERNMENT";
+    }
 
     const complaint = await Complaint.create({
       complaintId,
@@ -171,10 +193,12 @@ router.post("/", upload.single("photo"), async (req, res, next) => {
       photoUrl,
       sharePublic: parsed.data.sharePublic,
       status: "new",
+      targetOrganizations,
+      primaryChannel,
       updates: [
         {
           status: "new",
-          note: "",
+          note: targetOrganizations.length > 0 ? "Complaint shared with NGO partner" : "",
           proofUrl: "",
           actorType: "system",
           actorId: "",

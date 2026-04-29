@@ -9,12 +9,21 @@ const UPDATE_STATUSES = [
 ];
 
 const ACTION_TYPES = [
+  // Authority actions
   "INSPECTION",
   "NOTICE_ISSUED",
   "PAYMENT_CONFIRMED",
   "REPAIR_COMPLETED",
   "FORWARDED",
   "OTHER",
+  // NGO actions
+  "COUNSELLING",
+  "LEGAL_SUPPORT",
+  "FIELD_VISIT",
+  "ESCALATION",
+  "REFERRAL",
+  "COMMUNITY_MEETING",
+  "AWARENESS_CAMPAIGN",
 ];
 
 const complaintUpdateSchema = new mongoose.Schema(
@@ -24,7 +33,7 @@ const complaintUpdateSchema = new mongoose.Schema(
     proofUrl: { type: String, default: "" },
     actorType: {
       type: String,
-      enum: ["system", "citizen", "authority"],
+      enum: ["system", "citizen", "authority", "ngo"],
       default: "system",
     },
     actorId: { type: String, default: "" },
@@ -46,6 +55,15 @@ const complaintActionSchema = new mongoose.Schema(
     actionType: { type: String, enum: ACTION_TYPES, required: true },
     title: { type: String, required: true, trim: true },
     description: { type: String, default: "", trim: true },
+    // Source: who performed this action?
+    source: {
+      type: String,
+      enum: ["AUTHORITY", "NGO", "CSR", "SYSTEM"],
+      default: "AUTHORITY",
+    },
+    // Organization that performed this action (for NGO/CSR actions)
+    organizationId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization", default: null },
+    organizationName: { type: String, default: "", trim: true },
     // Keep both so we can record either JWT user identity or API-key based actor label.
     takenByUser: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     takenByLabel: { type: String, default: "", trim: true },
@@ -74,6 +92,17 @@ const complaintSchema = new mongoose.Schema(
     updates: { type: [complaintUpdateSchema], default: [] },
     actions: { type: [complaintActionSchema], default: [] },
     sharePublic: { type: Boolean, default: false },
+
+    // ─── NGO/CSR Organization targeting ───────────────────────────────
+    targetOrganizations: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+    }],
+    primaryChannel: {
+      type: String,
+      enum: ["GOVERNMENT", "NGO", "BOTH"],
+      default: "GOVERNMENT",
+    },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
@@ -83,4 +112,3 @@ module.exports = {
   UPDATE_STATUSES,
   ACTION_TYPES,
 };
-

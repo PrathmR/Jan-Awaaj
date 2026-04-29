@@ -30,41 +30,61 @@ router.get("/", async (req, res, next) => {
       });
     }
 
-    const results = await Post.aggregate([
-      {
-        $geoNear: {
-          near: { type: "Point", coordinates: [lonNum, latNum] }, // [lon, lat]
-          distanceField: "distMeters",
-          spherical: true,
-          maxDistance: rKm * 1000,
+    let results = [];
+    try {
+      results = await Post.aggregate([
+        {
+          $geoNear: {
+            near: { type: "Point", coordinates: [lonNum, latNum] }, // [lon, lat]
+            distanceField: "distMeters",
+            spherical: true,
+            maxDistance: rKm * 1000,
+          },
         },
-      },
-      {
-        $lookup: {
-          from: "complaints",
-          localField: "complaintId",
-          foreignField: "complaintId",
-          as: "complaint",
+        {
+          $lookup: {
+            from: "complaints",
+            localField: "complaintId",
+            foreignField: "complaintId",
+            as: "complaint",
+          },
         },
-      },
-      { $unwind: "$complaint" },
-      // Privacy-first: feed posts come only from shared complaints.
-      { $match: { "complaint.sharePublic": true } },
-      {
-        $project: {
-          postId: 1,
-          complaintId: 1,
-          text: 1,
-          photoUrl: 1,
-          createdAt: 1,
-          voteCounts: 1,
-          complaintStatus: "$complaint.status",
-          distMeters: 1,
+        // Use preserveNullAndEmptyArrays so posts without a matching complaint aren't dropped
+        { $unwind: { path: "$complaint", preserveNullAndEmptyArrays: true } },
+        // Privacy-first: feed posts come only from shared complaints.
+        {
+          $match: {
+            $or: [
+              { "complaint.sharePublic": true },
+              { complaint: { $exists: false } },
+            ],
+          },
         },
-      },
-      { $sort: { createdAt: -1 } },
-      { $limit: 50 },
-    ]);
+        {
+          $project: {
+            postId: 1,
+            complaintId: 1,
+            text: 1,
+            photoUrl: 1,
+            createdAt: 1,
+            voteCounts: 1,
+            comments: { $slice: ["$comments", -20] }, // last 20 comments
+            category: "$complaint.category",
+            complaintStatus: "$complaint.status",
+            complaintDescription: "$complaint.description",
+            complaintPhotoUrl: "$complaint.photoUrl",
+            distMeters: 1,
+          },
+        },
+        { $sort: { createdAt: -1 } },
+        { $limit: 50 },
+      ]);
+    } catch (geoError) {
+      // If the 2dsphere index doesn't exist yet (empty collection), return empty results
+      // eslint-disable-next-line no-console
+      console.warn("Geo query failed (index may not exist yet):", geoError.message);
+      results = [];
+    }
 
     return res.json({ posts: results });
   } catch (e) {

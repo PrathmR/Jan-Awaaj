@@ -81,7 +81,7 @@ router.post("/register", async (req, res, next) => {
 router.post("/login", async (req, res, next) => {
   try {
     const loginSchema = z.object({
-      phone: z.string().trim().min(6).max(20),
+      phone: z.string().trim().min(1).max(60),
       password: z.string().trim().min(1),
     });
 
@@ -95,19 +95,37 @@ router.post("/login", async (req, res, next) => {
     }
 
     const phone = parsed.data.phone;
-    const user = await User.findOne({ phone });
+    const user = await User.findOne({ phone }).populate("organization");
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
     const ok = await bcrypt.compare(parsed.data.password, user.passwordHash || "");
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
+    const role = user.role || "authority";
+    const tokenPayload = {
+      role,
+      departmentId: user.departmentId || "general",
+    };
+
     const token = jwt.sign(
-      { role: "authority", departmentId: user.departmentId || "general" },
+      tokenPayload,
       process.env.AUTH_JWT_SECRET,
-      { subject: user.phone, expiresIn: "24h" }
+      { subject: String(user._id), expiresIn: "24h" }
     );
 
-    return res.json({ token });
+    const response = { token, role };
+
+    // Include organization info for NGO/CSR users
+    if (user.organization) {
+      response.organization = {
+        orgId: user.organization.orgId,
+        name: user.organization.name,
+        type: user.organization.type,
+        focusAreas: user.organization.focusAreas,
+      };
+    }
+
+    return res.json(response);
   } catch (e) {
     return next(e);
   }
