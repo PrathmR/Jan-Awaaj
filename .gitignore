@@ -1,0 +1,38 @@
+# Root ignores for a mobile + backend monorepo
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables / secrets
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Expo/React Native caches & builds
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/.metro/
+mobile/android/
+mobile/ios/
+mobile/node_modules/
+**/.expo/
+**/dist/
+**/web-build/
+
+# Backend uploads & logs
+backend/uploads/
+backend/*.log
+**/*.log
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Optional local coverage/artifacts
+coverage/
+**/coverage/
+

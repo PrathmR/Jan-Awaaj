@@ -1,0 +1,22 @@
+# Backend ignores for Express + Mongo
+
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+
+# Uploads (MVP local storage)
+uploads/
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
