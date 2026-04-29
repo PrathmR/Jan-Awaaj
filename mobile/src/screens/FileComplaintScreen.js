@@ -333,6 +333,39 @@ export default function FileComplaintScreen({ navigation }) {
     } catch (e) { setError(e?.message || "Video selection failed"); }
   }
 
+  async function takePhoto() {
+    try {
+      const res = await ImagePicker.requestCameraPermissionsAsync();
+      if (!res.granted) { setError("Camera permission not granted"); return; }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+        aspect: [4, 3],
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (!asset) return;
+      setMedia({ uri: asset.uri, type: asset.mimeType || "image/jpeg", name: asset.fileName || "photo.jpg", isVideo: false });
+    } catch (e) { setError(e?.message || "Camera failed"); }
+  }
+
+  async function takeVideo() {
+    try {
+      const res = await ImagePicker.requestCameraPermissionsAsync();
+      if (!res.granted) { setError("Camera permission not granted"); return; }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: false,
+        quality: 0.7,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (!asset) return;
+      setMedia({ uri: asset.uri, type: asset.mimeType || "video/mp4", name: asset.fileName || "video.mp4", isVideo: true });
+    } catch (e) { setError(e?.message || "Video recording failed"); }
+  }
+
   // ── Submit ────────────────────────────────────────────────────────────────
 
   const canSummarize = inputMode === "voice" ? Boolean(voiceUri) : description.trim().length >= 5;
@@ -518,14 +551,24 @@ export default function FileComplaintScreen({ navigation }) {
           <Label text={t("photoVideoLabel")} />
           <View style={styles.mediaRow}>
             <Pressable style={[styles.mediaBtn, { flex: 1 }]} onPress={pickPhoto}>
-              <Ionicons name="camera" size={18} color="#fff" />
+              <Ionicons name="images" size={18} color="#fff" />
               <Text style={styles.mediaBtnText}>{media && !media.isVideo ? t("changePhoto") : t("pickPhoto")}</Text>
             </Pressable>
             <Pressable style={[styles.mediaBtn, { flex: 1, backgroundColor: "#374151" }]} onPress={pickVideo}>
-              <Ionicons name="videocam" size={18} color="#fff" />
+              <Ionicons name="film" size={18} color="#fff" />
               <Text style={styles.mediaBtnText}>
-                {media && media.isVideo ? "Change Video" : "Pick Video"}
+                {media && media.isVideo ? t("changeVideo") : t("pickVideo")}
               </Text>
+            </Pressable>
+          </View>
+          <View style={styles.mediaRow}>
+            <Pressable style={[styles.mediaBtn, { flex: 1 }]} onPress={takePhoto}>
+              <Ionicons name="camera" size={18} color="#fff" />
+              <Text style={styles.mediaBtnText}>{t("takePhoto")}</Text>
+            </Pressable>
+            <Pressable style={[styles.mediaBtn, { flex: 1, backgroundColor: "#374151" }]} onPress={takeVideo}>
+              <Ionicons name="videocam" size={18} color="#fff" />
+              <Text style={styles.mediaBtnText}>{t("takeVideo")}</Text>
             </Pressable>
           </View>
           {media?.uri && !media.isVideo ? (

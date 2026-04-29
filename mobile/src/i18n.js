@@ -60,6 +60,10 @@ export const translations = {
     title_Tracking: "Tracking",
     title_Partners: "Partners",
     title_Profile: "Profile",
+    pickVideo: "Pick Video",
+    changeVideo: "Change Video",
+    takePhoto: "Take Photo",
+    takeVideo: "Record Video",
   },
   hi: {
     appTitle: "जनआवाज़",
@@ -117,6 +121,10 @@ export const translations = {
     title_Tracking: "ट्रैकिंग",
     title_Partners: "भागीदार",
     title_Profile: "प्रोफ़ाइल",
+    pickVideo: "वीडियो चुनें",
+    changeVideo: "वीडियो बदलें",
+    takePhoto: "फोटो लें",
+    takeVideo: "वीडियो रिकॉर्ड करें",
   },
   mr: {
     appTitle: "जनआवाज",
@@ -174,6 +182,10 @@ export const translations = {
     title_Tracking: "ट्रॅकिंग",
     title_Partners: "भागीदार",
     title_Profile: "प्रोफाइल",
+    pickVideo: "व्हिडिओ निवडा",
+    changeVideo: "व्हिडिओ बदला",
+    takePhoto: "फोटो काढा",
+    takeVideo: "व्हिडिओ रेकॉर्ड करा",
   },
   kn: {
     appTitle: "ಜನಆವಾಜ್",
@@ -231,6 +243,10 @@ export const translations = {
     title_Tracking: "ಟ್ರ್ಯಾಕಿಂಗ್",
     title_Partners: "ಪಾಲುದಾರರು",
     title_Profile: "ಪ್ರೊಫೈಲ್",
+    pickVideo: "ವೀಡಿಯೋ ಆರಿಸಿ",
+    changeVideo: "ವೀಡಿಯೋ ಬದಲಿಸಿ",
+    takePhoto: "ಫೋಟೋ ತೆಗೆದುಕೊಳ್ಳಿ",
+    takeVideo: "ವೀಡಿಯೋ ರೆಕಾರ್ಡ್ ಮಾಡಿ",
   },
 };
 

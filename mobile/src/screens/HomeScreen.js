@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
+import { Video, ResizeMode } from "expo-av";
 
 import { backendFetch, getBackendUrl } from "../api/backend";
 import { useLanguage } from "../i18n";
@@ -206,6 +207,11 @@ function PostCard({ item, onVote, t, baseUrl }) {
 
   // Resolve photo URL — could be from post or complaint
   const photoUrl = resolveMediaUrl(item.photoUrl || item.complaintPhotoUrl, baseUrl);
+  const isVideo = photoUrl && (
+    photoUrl.toLowerCase().endsWith(".mp4") ||
+    photoUrl.toLowerCase().endsWith(".mov") ||
+    photoUrl.toLowerCase().endsWith(".m4v")
+  );
   const isVoice = item.text === "Voice complaint" || item.complaintDescription === "Voice complaint";
   const displayText = (item.text && item.text !== "Voice complaint") ? item.text :
                       (item.complaintDescription && item.complaintDescription !== "Voice complaint") ?
@@ -234,9 +240,19 @@ function PostCard({ item, onVote, t, baseUrl }) {
         <StatusPill status={item.complaintStatus} />
       </View>
 
-      {/* Photo/Image */}
+      {/* Photo/Video/Image */}
       {photoUrl ? (
-        <Image source={{ uri: photoUrl }} style={styles.thumb} />
+        isVideo ? (
+          <Video
+            source={{ uri: photoUrl }}
+            style={styles.thumb}
+            useNativeControls
+            resizeMode={ResizeMode.COVER}
+            isLooping={false}
+          />
+        ) : (
+          <Image source={{ uri: photoUrl }} style={styles.thumb} />
+        )
       ) : null}
 
       {/* Voice indicator */}
