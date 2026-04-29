@@ -61,7 +61,7 @@ function ModeToggle({ mode, onChange, t }) {
 
 // ─── Voice Recorder ───────────────────────────────────────────────────────────
 
-function VoiceRecorder({ t }) {
+function VoiceRecorder({ t, onRecordingComplete }) {
   const recordingRef = useRef(null);
   const soundRef = useRef(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -110,6 +110,7 @@ function VoiceRecorder({ t }) {
       await recordingRef.current.startAsync();
       setIsRecording(true);
       setAudioUri(null);
+      if (onRecordingComplete) onRecordingComplete(null);
       setPosition(0);
       // Tick duration while recording
       intervalRef.current = setInterval(() => {
@@ -126,6 +127,7 @@ function VoiceRecorder({ t }) {
       await recordingRef.current.stopAndUnloadAsync();
       const uri = recordingRef.current.getURI();
       setAudioUri(uri);
+      if (onRecordingComplete) onRecordingComplete(uri);
     } catch (e) {
       console.warn("Stop recording failed:", e);
     }
@@ -229,7 +231,10 @@ function Label({ text }) {
 // ─── FileComplaintScreen ──────────────────────────────────────────────────────
 
 export default function FileComplaintScreen({ navigation }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  const [step, setStep] = useState(1);
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   const [inputMode, setInputMode] = useState("text");
   const [category, setCategory] = useState(CATEGORY_KEYS[0].value);
@@ -248,8 +253,7 @@ export default function FileComplaintScreen({ navigation }) {
   const [selectedNgoId, setSelectedNgoId] = useState(null);
   const [loadingNgos, setLoadingNgos] = useState(false);
 
-  // Audio ref for voice mode – passed down via ref so we can get URI on submit
-  const audioUriRef = useRef(null);
+  const [voiceUri, setVoiceUri] = useState(null);
 
   const sharePublicValue = sharePublic === true || sharePublic === "true";
 
@@ -331,12 +335,41 @@ export default function FileComplaintScreen({ navigation }) {
 
   // ── Submit ────────────────────────────────────────────────────────────────
 
+  const canSummarize = inputMode === "voice" ? Boolean(voiceUri) : description.trim().length >= 5;
+
   const canSubmit = useMemo(() => {
-    const hasContent = inputMode === "voice"
-      ? true  // voice mode: always allow (recording may be in progress or done)
-      : description.trim().length >= 5;
-    return Boolean(coords && category && hasContent);
-  }, [coords, category, description, inputMode]);
+    return Boolean(coords && category && description.trim().length >= 5);
+  }, [coords, category, description]);
+
+  async function summarize() {
+    try {
+      setIsSummarizing(true);
+      setError("");
+
+      const backendUrl = await getBackendUrl();
+      const formData = new FormData();
+      formData.append("language", language);
+
+      if (inputMode === "text") {
+        formData.append("description", description.trim());
+      } else {
+        formData.append("voice", { uri: voiceUri, type: "audio/m4a", name: "voice.m4a" });
+      }
+
+      const res = await fetch(`${backendUrl}/api/complaints/summarize`, { method: "POST", body: formData });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = text; }
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+      setDescription(data.summary);
+      setStep(2);
+    } catch (e) {
+      setError(e?.message || "Summarization failed");
+    } finally {
+      setIsSummarizing(false);
+    }
+  }
 
   async function submit() {
     try {
@@ -358,13 +391,13 @@ export default function FileComplaintScreen({ navigation }) {
       formData.append("lat", String(coords.lat));
       formData.append("lon", String(coords.lon));
 
-      if (inputMode === "text") {
-        const trimmed = description.trim();
-        if (trimmed.length < 5) throw new Error("Description must be at least 5 characters");
-        formData.append("description", trimmed);
-      } else {
-        formData.append("description", "Voice complaint");
+      formData.append("description", description.trim());
+      formData.append("isSummarized", "true");
+      formData.append("language", language);
+      
+      if (inputMode === "voice" && voiceUri) {
         formData.append("hasVoiceRecording", "true");
+        formData.append("voice", { uri: voiceUri, type: "audio/m4a", name: "voice.m4a" });
       }
 
       if (media?.uri) {
@@ -410,26 +443,60 @@ export default function FileComplaintScreen({ navigation }) {
           </View>
         ) : null}
 
-        {/* Mode toggle */}
-        <ModeToggle mode={inputMode} onChange={handleModeChange} t={t} />
+        {step === 1 ? (
+          <>
+            {/* Mode toggle */}
+            <ModeToggle mode={inputMode} onChange={handleModeChange} t={t} />
 
-        {/* Voice recorder OR text input */}
-        {inputMode === "voice" ? (
-          <VoiceRecorder t={t} />
+            {/* Voice recorder OR text input */}
+            {inputMode === "voice" ? (
+              <VoiceRecorder t={t} onRecordingComplete={setVoiceUri} />
+            ) : (
+              <View>
+                <Label text={t("typeLabel")} />
+                <TextInput
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder={t("typeLabel")}
+                  style={styles.textArea}
+                  multiline
+                  numberOfLines={5}
+                  textAlignVertical="top"
+                />
+              </View>
+            )}
+
+            <Pressable
+              style={[styles.submitBtn, (!canSummarize || isSummarizing) && { opacity: 0.55 }]}
+              onPress={summarize}
+              disabled={!canSummarize || isSummarizing}
+            >
+              {isSummarizing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitText}>Summarize &gt;</Text>
+              )}
+            </Pressable>
+          </>
         ) : (
-          <View>
-            <Label text={t("typeLabel")} />
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder={t("typeLabel")}
-              style={styles.textArea}
-              multiline
-              numberOfLines={5}
-              textAlignVertical="top"
-            />
-          </View>
-        )}
+          <>
+            {/* AI Summary View */}
+            <View>
+              <View style={[styles.rowBetween, { padding: 0, borderWidth: 0, marginBottom: 8 }]}>
+                <Label text="AI Summary" />
+                <Pressable onPress={() => setStep(1)}>
+                  <Text style={{ color: "#2563eb", fontWeight: "600", fontSize: 13 }}>Edit original</Text>
+                </Pressable>
+              </View>
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                style={styles.textArea}
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+              />
+            </View>
 
         {/* Category */}
         <View>
@@ -588,6 +655,8 @@ export default function FileComplaintScreen({ navigation }) {
             </>
           )}
         </Pressable>
+          </>
+        )}
 
       </ScrollView>
     </SafeAreaView>

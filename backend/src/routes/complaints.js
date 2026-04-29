@@ -12,6 +12,7 @@ const { AuditEvent } = require("../models/AuditEvent");
 const { Organization } = require("../models/Organization");
 const { requireAuthority } = require("../middleware/requireAuthority");
 const { recordAuditEvent } = require("../services/auditService");
+const { processTextQuery, processAudioQuery } = require("../services/aiService");
 
 const router = express.Router();
 
@@ -152,7 +153,27 @@ function parseActionInput(rawAction) {
   return { error: "Invalid action payload" };
 }
 
-router.post("/", upload.single("photo"), async (req, res, next) => {
+router.post("/summarize", upload.fields([{ name: "voice", maxCount: 1 }]), async (req, res, next) => {
+  try {
+    const language = req.body.language || "en";
+    let summary = "";
+
+    if (req.files && req.files["voice"] && req.files["voice"].length > 0) {
+      const voiceFile = req.files["voice"][0];
+      summary = await processAudioQuery(voiceFile.path, voiceFile.mimetype, language);
+    } else if (req.body.description) {
+      summary = await processTextQuery(req.body.description, language);
+    } else {
+      return res.status(400).json({ error: "No voice or text provided" });
+    }
+
+    return res.json({ summary });
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.post("/", upload.fields([{ name: "photo", maxCount: 1 }, { name: "voice", maxCount: 1 }]), async (req, res, next) => {
   try {
     const parsed = complaintCreateSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -162,7 +183,24 @@ router.post("/", upload.single("photo"), async (req, res, next) => {
     }
 
     const complaintId = uuidv4();
-    const photoUrl = req.file ? `/uploads/${req.file.filename}` : (req.body.photoUrl || "");
+    
+    let photoFile = null;
+    let voiceFile = null;
+    if (req.files) {
+      if (req.files["photo"] && req.files["photo"].length > 0) photoFile = req.files["photo"][0];
+      if (req.files["voice"] && req.files["voice"].length > 0) voiceFile = req.files["voice"][0];
+    }
+    
+    const photoUrl = photoFile ? `/uploads/${photoFile.filename}` : (req.body.photoUrl || "");
+
+    let description = parsed.data.description;
+    if (req.body.isSummarized !== "true") {
+      if (req.body.hasVoiceRecording === "true" && voiceFile) {
+        description = await processAudioQuery(voiceFile.path, voiceFile.mimetype, req.body.language || "en");
+      } else {
+        description = await processTextQuery(description, req.body.language || "en");
+      }
+    }
 
     // ── Org targeting (optional) ──
     let targetOrganizations = [];
@@ -189,7 +227,7 @@ router.post("/", upload.single("photo"), async (req, res, next) => {
       lat: parsed.data.lat,
       lon: parsed.data.lon,
       category: parsed.data.category,
-      description: parsed.data.description,
+      description: description,
       photoUrl,
       sharePublic: parsed.data.sharePublic,
       status: "new",

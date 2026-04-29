@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Darwin TrustLayer - Authority Dashboard Prototype</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: "#eefaf9",
+              100: "#d8f3f1",
+              600: "#0f766e",
+              700: "#0b5f58"
+            }
+          },
+          boxShadow: {
+            soft: "0 8px 30px rgba(15, 23, 42, 0.08)"
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    .dark body .bg-white { background-color: #111827 !important; }
+    .dark body .bg-slate-50, .dark body .bg-slate-50\/60, .dark body .bg-slate-100 { background-color: #1f2937 !important; }
+    .dark body .border-slate-200, .dark body .border-slate-300 { border-color: #334155 !important; }
+    .dark body .text-slate-900, .dark body .text-slate-800 { color: #e5e7eb !important; }
+    .dark body .text-slate-700, .dark body .text-slate-600, .dark body .text-slate-500 { color: #cbd5e1 !important; }
+    .dark body input, .dark body select, .dark body textarea { background-color: #0f172a !important; color: #e5e7eb !important; }
+  </style>
+</head>
+<body class="h-full bg-slate-100 text-slate-800 antialiased transition-colors duration-300">
+  <main class="min-h-full">
+    <!-- Login Screen -->
+    <section id="loginView" class="min-h-screen flex items-center justify-center p-4 sm:p-6">
+      <div class="w-full max-w-md rounded-2xl bg-white shadow-soft border border-slate-200 p-7 sm:p-8">
+        <div class="mb-6">
+          <div class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700 font-semibold">DT</div>
+          <h1 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">Darwin TrustLayer</h1>
+          <p class="mt-1 text-sm text-slate-600">Authority Access Portal</p>
+        </div>
+
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label for="backendUrl" class="block text-sm font-medium text-slate-700 mb-1.5">Backend URL</label>
+            <input
+              id="backendUrl"
+              type="url"
+              required
+              value="http://localhost:4000"
+              placeholder="http://localhost:4000"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 transition"
+            />
+          </div>
+          <div>
+            <label for="apiKey" class="block text-sm font-medium text-slate-700 mb-1.5">Authority API Key</label>
+            <input
+              id="apiKey"
+              type="password"
+              required
+              placeholder="AUTH_API_KEY value"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 transition"
+            />
+          </div>
+          <div>
+            <label for="officialId" class="block text-sm font-medium text-slate-700 mb-1.5">Official Email / ID</label>
+            <input
+              id="officialId"
+              type="text"
+              required
+              placeholder="officer@district.gov.in"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 transition"
+            />
+          </div>
+          <div>
+            <label for="password" class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+            <input
+              id="password"
+              type="password"
+              required
+              placeholder="Enter secure password"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 transition"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 active:scale-[0.99] transition"
+          >
+            Login to Authority Dashboard
+          </button>
+        </form>
+
+        <div class="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+          Secure access: All actions are logged in a tamper-proof audit trail.
+        </div>
+        <p class="mt-3 text-xs text-slate-500">
+          Use backend URL and `AUTH_API_KEY` from `backend/.env`.
+        </p>
+      </div>
+    </section>
+
+    <!-- Dashboard Home (shown after login) -->
+    <section id="dashboardView" class="hidden min-h-screen">
+      <div class="flex min-h-screen">
+        <aside class="hidden lg:flex lg:w-72 lg:flex-col border-r border-slate-200 bg-white">
+          <div class="px-5 py-4 border-b border-slate-200">
+            <p class="font-semibold text-slate-900">Darwin TrustLayer</p>
+            <p class="text-xs text-slate-500">Authority Console</p>
+          </div>
+          <nav class="p-3 space-y-1 text-sm">
+            <a class="block rounded-lg bg-brand-50 text-brand-700 px-3 py-2 font-medium" href="#">Dashboard</a>
+            <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#complaintQueue">Complaints Queue</a>
+            <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#complaintQueue" onclick="document.getElementById('filterStatus').value='assigned'; document.getElementById('filterStatus').dispatchEvent(new Event('change'));">Assigned Cases</a>
+            <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#" onclick="alert('Feature coming soon in MVP phase 2')">Community Validation</a>
+            <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#" onclick="alert('Audit Log coming soon')">Audit Log</a>
+            <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#" onclick="alert('Reports coming soon')">Reports</a>
+            <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#" onclick="alert('Settings coming soon')">Profile / Settings</a>
+          </nav>
+        </aside>
+
+        <div class="flex-1 min-w-0">
+          <header class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div class="flex items-center gap-2">
+                <button id="openMobileNavBtn" class="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition" aria-label="Open menu">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                  </svg>
+                </button>
+                <div>
+                <h2 class="text-lg font-semibold text-slate-900">Authority Dashboard</h2>
+                <p class="text-xs text-slate-500">Operational view for assigned grievances</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="relative flex-1 lg:w-72">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
+                    </svg>
+                  </span>
+                  <input
+                    id="globalSearch"
+                    type="search"
+                    placeholder="Search complaint ID, category, location..."
+                    class="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+                  />
+                </div>
+                <button id="darkModeToggle" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition" aria-label="Toggle dark mode">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M21.75 15.5A9 9 0 1 1 12.5 2.25 7 7 0 1 0 21.75 15.5z"/></svg>
+                </button>
+                <button class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition" aria-label="Notifications">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17H19a2 2 0 0 0 2-2v-1a7 7 0 1 0-14 0v1a2 2 0 0 0 2 2h4.143M14.857 17a3 3 0 1 1-5.714 0m5.714 0H9.143" />
+                  </svg>
+                  <span class="absolute -top-1 -right-1 h-4 min-w-4 rounded-full bg-rose-500 px-1 text-[10px] leading-4 text-white">3</span>
+                </button>
+                <span class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 whitespace-nowrap">
+                  Jaipur District · Rajasthan
+                </span>
+                <div class="hidden sm:flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5">
+                  <div class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">AS</div>
+                  <div class="leading-tight">
+                    <p class="text-xs font-semibold text-slate-800">A. Sharma</p>
+                    <p class="text-[11px] text-slate-500">Labour Dept.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <div class="p-4 sm:p-6 space-y-5">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-soft">
+                <div class="flex items-start justify-between">
+                  <p class="text-sm font-medium text-slate-600">New Complaints</p>
+                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.21 0 4 1.79 4 4v1.17c2.89.86 5 3.54 5 6.83v2l1 1v1H2v-1l1-1v-2c0-3.29 2.11-5.97 5-6.83V6c0-2.21 1.79-4 4-4zm0 20a3 3 0 0 0 2.83-2H9.17A3 3 0 0 0 12 22z"/></svg>
+                  </span>
+                </div>
+                <p id="statNew" class="mt-4 text-2xl font-bold text-slate-900">0</p>
+                <p class="mt-1 text-xs font-medium text-rose-600">Active 'new' cases</p>
+              </article>
+
+              <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-soft">
+                <div class="flex items-start justify-between">
+                  <p class="text-sm font-medium text-slate-600">In Progress</p>
+                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2zm1 1v9h8A9 9 0 0 0 13 3z"/></svg>
+                  </span>
+                </div>
+                <p id="statInProgress" class="mt-4 text-2xl font-bold text-slate-900">0</p>
+                <p class="mt-1 text-xs font-medium text-blue-600">Currently being handled</p>
+              </article>
+
+              <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-soft">
+                <div class="flex items-start justify-between">
+                  <p class="text-sm font-medium text-slate-600">Awaiting Verification</p>
+                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V8h2v4z"/></svg>
+                  </span>
+                </div>
+                <p id="statAwaiting" class="mt-4 text-2xl font-bold text-slate-900">0</p>
+                <p class="mt-1 text-xs font-medium text-amber-600">Acknowledged or Assigned</p>
+              </article>
+
+              <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-soft">
+                <div class="flex items-start justify-between">
+                  <p class="text-sm font-medium text-slate-600">Resolved Today</p>
+                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="m9 16.17-3.88-3.88L3.7 13.71 9 19l12-12-1.41-1.41z"/></svg>
+                  </span>
+                </div>
+                <p id="statResolved" class="mt-4 text-2xl font-bold text-slate-900">0</p>
+                <p class="mt-1 text-xs font-medium text-emerald-600">Total closed cases</p>
+              </article>
+
+              <article class="rounded-xl border border-rose-200 bg-white p-4 shadow-soft">
+                <div class="flex items-start justify-between">
+                  <p class="text-sm font-medium text-slate-600">Escalated / High Priority</p>
+                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 2h2v11h-2zM11 15h2v2h-2zm1 7C6.48 22 2 17.52 2 12S6.48 2 12 2s10 4.48 10 10-4.48 10-10 10z"/></svg>
+                  </span>
+                </div>
+                <p id="statEscalated" class="mt-4 text-2xl font-bold text-rose-700">0</p>
+                <p class="mt-1 text-xs font-medium text-rose-600">High priority issues</p>
+              </article>
+            </div>
+
+            <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-soft">
+              <div class="grid grid-cols-1 gap-2 text-xs text-slate-700 md:grid-cols-3">
+                <p><strong>Privacy-first:</strong> Reporter identity is masked by default.</p>
+                <p><strong>Trust-first:</strong> Every action appends to immutable timeline entries.</p>
+                <p><strong>Human-controlled AI:</strong> AI recommends, authority decides and records final action.</p>
+              </div>
+            </section>
+
+            <section id="complaintQueue" class="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="text-base font-semibold text-slate-900">Complaint Queue</h3>
+                  <p class="text-sm text-slate-500">Live queue for assigned and incoming grievances.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="fetchComplaints()" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh
+                  </button>
+                  <span id="filteredCount" class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                    0 cases
+                  </span>
+                </div>
+              </div>
+
+              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <select id="filterCategory" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                  <option value="">All Categories</option>
+                  <option value="Labour">Labour</option>
+                  <option value="Water">Water</option>
+                  <option value="Education">Education</option>
+                  <option value="Health">Health</option>
+                  <option value="Sanitation">Sanitation</option>
+                  <option value="PDS">PDS</option>
+                  <option value="Safety">Safety</option>
+                  <option value="Road Safety">Road Safety</option>
+                </select>
+                <select id="filterStatus" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                  <option value="">All Statuses</option>
+                  <option value="new">new</option>
+                  <option value="acknowledged">acknowledged</option>
+                  <option value="assigned">assigned</option>
+                  <option value="in_progress">in_progress</option>
+                  <option value="resolved">resolved</option>
+                </select>
+                <input id="filterDate" type="date" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" />
+              </div>
+
+              <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+                <div class="max-h-[420px] overflow-auto">
+                  <table class="min-w-[1100px] w-full text-sm">
+                    <thead class="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
+                      <tr class="text-left text-xs uppercase tracking-wide text-slate-600">
+                        <th class="px-4 py-3 font-semibold">Complaint ID</th>
+                        <th class="px-4 py-3 font-semibold">Category</th>
+                        <th class="px-4 py-3 font-semibold">Location</th>
+                        <th class="px-4 py-3 font-semibold">Status</th>
+                        <th class="px-4 py-3 font-semibold">Submitted At</th>
+                        <th class="px-4 py-3 font-semibold">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="complaintTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <p id="queueActionHint" class="mt-3 text-xs text-slate-500">Select a complaint to review and respond.</p>
+            </section>
+
+            <section id="caseWorkspace" class="hidden rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-slate-500">Case Workspace</p>
+                  <h3 id="caseHeaderId" class="mt-1 text-lg font-semibold text-slate-900">Complaint</h3>
+                  <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    <span id="caseHeaderStatus" class="inline-flex items-center rounded-full border px-2 py-0.5 font-medium"></span>
+                    <span id="caseHeaderSeverity" class="inline-flex items-center rounded-full border px-2 py-0.5 font-medium"></span>
+                    <span id="caseHeaderCategory" class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700"></span>
+                    <span id="caseHeaderLocation" class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700"></span>
+                  </div>
+                </div>
+                <div class="text-sm sm:text-right">
+                  <p class="text-slate-600">Submitted: <span id="caseHeaderSubmitted" class="font-medium text-slate-800"></span></p>
+                    <p class="mt-1">SLA: <span id="caseHeaderSla" class="font-medium"></span></p>
+                    <p id="caseOverdueAlert" class="mt-1 hidden rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs text-rose-700">Overdue case: immediate officer action recommended.</p>
+                    <button id="hideWorkspaceBtn" class="mt-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">Hide Workspace</button>
+                  </div>
+                </div>
+
+              <div class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <div class="space-y-4 xl:col-span-2">
+                  <article class="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                    <h4 class="text-sm font-semibold text-slate-900">AI Summary</h4>
+                    <p id="aiSummaryText" class="mt-2 text-sm text-slate-700"></p>
+                    <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
+                      <p><span class="text-slate-500">Likely issue type:</span> <span id="aiIssueType" class="font-medium text-slate-800"></span></p>
+                      <p><span class="text-slate-500">Likely affected group:</span> <span id="aiAffectedGroup" class="font-medium text-slate-800"></span></p>
+                      <p><span class="text-slate-500">Suggested department:</span> <span id="aiDepartment" class="font-medium text-slate-800"></span></p>
+                      <p><span class="text-slate-500">Confidence score:</span> <span id="aiConfidence" class="font-medium text-slate-800"></span></p>
+                    </div>
+                    <div id="aiTags" class="mt-3 flex flex-wrap gap-2"></div>
+                  </article>
+
+                  <article class="rounded-xl border border-slate-200 p-4">
+                    <h4 class="text-sm font-semibold text-slate-900">Original Complaint Input</h4>
+                    <p class="mt-2 text-xs text-slate-500">Original transcript</p>
+                    <p id="originalTranscript" class="mt-1 text-sm text-slate-700"></p>
+                    <div class="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p class="text-xs font-medium text-slate-600">Voice recording (mock)</p>
+                      <div class="mt-2 flex items-center gap-3">
+                        <button class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white">▶</button>
+                        <div class="h-1.5 flex-1 rounded-full bg-slate-200 overflow-hidden">
+                          <div class="h-full w-2/5 bg-brand-600"></div>
+                        </div>
+                        <span class="text-xs text-slate-500">01:24 / 03:46</span>
+                      </div>
+                    </div>
+                    <p class="mt-3 text-xs text-slate-500">Translated summary</p>
+                    <p id="translatedSummary" class="mt-1 text-sm text-slate-700"></p>
+                    <div class="mt-3">
+                      <p class="text-xs text-slate-500 mb-1">Attachments</p>
+                      <div id="attachmentThumbs" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+                    </div>
+                  </article>
+
+                  <article class="rounded-xl border border-slate-200 p-4">
+                    <h4 class="text-sm font-semibold text-slate-900">Tamper-Proof Timeline / Proof-of-Action Log</h4>
+                    <div class="mt-2 inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">
+                      <span>#</span>
+                      Immutable entries · Verified hash chain
+                    </div>
+                    <ol id="timelineList" class="mt-4 space-y-4 border-l-2 border-slate-200 pl-4"></ol>
+                  </article>
+
+                  <article class="rounded-xl border border-slate-200 p-4">
+                    <h4 class="text-sm font-semibold text-slate-900">Internal Notes (Authority Only)</h4>
+                    <textarea id="internalNotes" rows="4" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100" placeholder="Add internal observations, routing notes, and field context..."></textarea>
+                  </article>
+                </div>
+
+                <div class="space-y-4">
+                  <article class="rounded-xl border border-slate-200 p-4">
+                    <h4 class="text-sm font-semibold text-slate-900">Reporter Identity (Privacy-Safe)</h4>
+                    <div class="mt-2 space-y-1 text-sm">
+                      <p><span class="text-slate-500">Name:</span> <span id="reporterName" class="font-medium text-slate-800"></span></p>
+                      <p><span class="text-slate-500">Source:</span> <span id="reporterSource" class="font-medium text-slate-800"></span></p>
+                      <p><span class="text-slate-500">Phone:</span> <span id="reporterPhone" class="font-medium text-slate-800"></span></p>
+                      <p><span class="text-slate-500">Coarse location:</span> <span id="reporterArea" class="font-medium text-slate-800"></span></p>
+                    </div>
+                    <p class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">Sensitive identity hidden by policy</p>
+                    <button class="mt-3 w-full rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition">Request Contact via Secure Channel</button>
+                  </article>
+
+                  <article class="rounded-xl border border-slate-200 p-4">
+                    <h4 class="text-sm font-semibold text-slate-900">Community Validation</h4>
+                    <div class="mt-2 space-y-1 text-sm">
+                      <p><span class="text-slate-500">Status:</span> <span id="validationStatus" class="font-medium text-slate-800"></span></p>
+                      <p><span class="text-slate-500">Responses:</span> <span id="validationResponses" class="font-medium text-slate-800"></span></p>
+                      <p><span class="text-slate-500">Yes / No split:</span> <span id="validationSplit" class="font-medium text-slate-800"></span></p>
+                      <p><span class="text-slate-500">Trusted validator score:</span> <span id="validationScore" class="font-medium text-slate-800"></span></p>
+                    </div>
+                    <div class="mt-3">
+                      <p class="text-xs text-slate-500">Validator preview (masked)</p>
+                      <p id="validatorPreview" class="mt-1 text-xs text-slate-700"></p>
+                    </div>
+                    <div class="mt-2">
+                      <p class="text-xs text-slate-500">Comment snippets</p>
+                      <p id="validatorComments" class="mt-1 text-xs text-slate-700"></p>
+                    </div>
+                    <div id="validationFlag" class="mt-3 hidden rounded-lg border border-rose-200 bg-rose-50 px-2 py-1.5 text-xs text-rose-700">
+                      <strong>Contested Resolution:</strong> Community feedback is mixed. Review disputed responses before final closure.
+                    </div>
+                    <div class="mt-3 grid grid-cols-1 gap-2">
+                      <button data-community-action="send" class="community-action-btn rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition">Send Verification Request</button>
+                      <button data-community-action="review" class="community-action-btn rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition">Review Disputed Responses</button>
+                      <button data-community-action="reopen" class="community-action-btn rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">Reopen Case</button>
+                      <button data-community-action="final-close" class="community-action-btn rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition">Final Close</button>
+                    </div>
+                  </article>
+
+                  <article class="rounded-xl border border-slate-200 p-4">
+                    <h4 class="text-sm font-semibold text-slate-900">Action Panel</h4>
+                    <form id="responseForm" class="mt-3 space-y-3">
+                      <select id="responseStatus" required class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100">
+                        <option value="">Select status</option>
+                        <option value="acknowledged">acknowledged</option>
+                        <option value="assigned">assigned</option>
+                        <option value="in_progress">in_progress</option>
+                        <option value="resolved">resolved</option>
+                      </select>
+                      <textarea id="responseNote" rows="4" required placeholder="Authority response note..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"></textarea>
+                      <input id="responseProof" type="file" accept="image/*,.pdf" class="block w-full text-xs text-slate-600" />
+                      <button id="submitResponseBtn" type="submit" class="w-full rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 transition">Submit Response</button>
+                    </form>
+                    <p id="actionFeedback" class="mt-3 text-xs text-slate-500">Open a complaint first, then submit authority response.</p>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-base font-semibold text-slate-900">Reports / Insights</h3>
+                  <p class="text-sm text-slate-500">Operational analytics snapshot for decision support.</p>
+                </div>
+                <span class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">Last refresh: Live</span>
+              </div>
+              <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <article class="rounded-xl border border-slate-200 p-4">
+                  <h4 class="text-sm font-semibold text-slate-900">Complaints by Category</h4>
+                  <div id="categoryInsights" class="mt-3 space-y-2"></div>
+                </article>
+                <article class="rounded-xl border border-slate-200 p-4">
+                  <h4 class="text-sm font-semibold text-slate-900">Complaints by Status</h4>
+                  <div id="statusInsights" class="mt-3 space-y-2"></div>
+                </article>
+                <article class="rounded-xl border border-slate-200 p-4">
+                  <h4 class="text-sm font-semibold text-slate-900">Hotspot Areas</h4>
+                  <div id="hotspotInsights" class="mt-3 space-y-2"></div>
+                </article>
+                <article class="rounded-xl border border-slate-200 p-4">
+                  <h4 class="text-sm font-semibold text-slate-900">Average Resolution Time</h4>
+                  <p id="avgResolutionValue" class="mt-2 text-2xl font-bold text-slate-900">--</p>
+                  <p id="avgResolutionHint" class="mt-1 text-xs text-slate-500"></p>
+                  <div class="mt-3 h-2 rounded-full bg-slate-200">
+                    <div id="avgResolutionBar" class="h-2 rounded-full bg-brand-600" style="width:0%"></div>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="mobileNavBackdrop" class="hidden fixed inset-0 bg-slate-900/35 z-40 lg:hidden"></div>
+  <aside id="mobileNav" class="hidden fixed left-0 top-0 h-full w-72 border-r border-slate-200 bg-white z-50 lg:hidden">
+    <div class="flex h-full flex-col">
+      <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+        <div>
+          <p class="font-semibold text-slate-900">Darwin TrustLayer</p>
+          <p class="text-xs text-slate-500">Authority Console</p>
+        </div>
+        <button id="closeMobileNavBtn" class="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-700">Close</button>
+      </div>
+      <nav class="p-3 space-y-1 text-sm">
+        <a class="block rounded-lg bg-brand-50 text-brand-700 px-3 py-2 font-medium" href="#">Dashboard</a>
+        <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#complaintQueue" onclick="closeMobileNav()">Complaints Queue</a>
+        <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#complaintQueue" onclick="document.getElementById('filterStatus').value='assigned'; document.getElementById('filterStatus').dispatchEvent(new Event('change')); closeMobileNav()">Assigned Cases</a>
+        <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#" onclick="alert('Feature coming soon in MVP phase 2'); closeMobileNav()">Community Validation</a>
+        <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#" onclick="alert('Audit Log coming soon'); closeMobileNav()">Audit Log</a>
+        <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#" onclick="alert('Reports coming soon'); closeMobileNav()">Reports</a>
+        <a class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 transition" href="#" onclick="alert('Settings coming soon'); closeMobileNav()">Profile / Settings</a>
+      </nav>
+    </div>
+  </aside>
+
+  <script>
+    const loginForm = document.getElementById("loginForm");
+    const loginView = document.getElementById("loginView");
+    const dashboardView = document.getElementById("dashboardView");
+    const complaintTableBody = document.getElementById("complaintTableBody");
+    const filteredCount = document.getElementById("filteredCount");
+    const queueActionHint = document.getElementById("queueActionHint");
+    const globalSearch = document.getElementById("globalSearch");
+    const darkModeToggle = document.getElementById("darkModeToggle");
+    const openMobileNavBtn = document.getElementById("openMobileNavBtn");
+    const closeMobileNavBtn = document.getElementById("closeMobileNavBtn");
+    const mobileNav = document.getElementById("mobileNav");
+    const mobileNavBackdrop = document.getElementById("mobileNavBackdrop");
+    const caseWorkspace = document.getElementById("caseWorkspace");
+    const actionFeedback = document.getElementById("actionFeedback");
+    const responseForm = document.getElementById("responseForm");
+    const backendUrlInput = document.getElementById("backendUrl");
+    const apiKeyInput = document.getElementById("apiKey");
+    const responseStatus = document.getElementById("responseStatus");
+    const responseNote = document.getElementById("responseNote");
+    const responseProof = document.getElementById("responseProof");
+    const submitResponseBtn = document.getElementById("submitResponseBtn");
+
+    const AUTH_STORAGE_KEY = "dtl-authority-config";
+    let apiConfig = { baseUrl: "", apiKey: "" };
+    let allComplaints = [];
+    let currentComplaint = null;
+    let searchTerm = "";
+
+    function formatDate(value) {
+      if (!value) return "-";
+      const dt = new Date(value);
+      if (Number.isNaN(dt.getTime())) return "-";
+      return dt.toLocaleString();
+    }
+
+    function toLocationText(complaint) {
+      if (Number.isFinite(complaint?.lat) && Number.isFinite(complaint?.lon)) {
+        return `${complaint.lat.toFixed(4)}, ${complaint.lon.toFixed(4)}`;
+      }
+      return "Location unavailable";
+    }
+
+    function getStatusBadgeClass(status) {
+      if (status === "new") return "bg-slate-100 text-slate-700 border-slate-200";
+      if (status === "acknowledged") return "bg-indigo-50 text-indigo-700 border-indigo-200";
+      if (status === "assigned") return "bg-blue-50 text-blue-700 border-blue-200";
+      if (status === "in_progress") return "bg-amber-50 text-amber-700 border-amber-200";
+      if (status === "resolved") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      return "bg-slate-100 text-slate-700 border-slate-200";
+    }
+
+    function getFilteredComplaints() {
+      const category = document.getElementById("filterCategory").value;
+      const status = document.getElementById("filterStatus").value;
+      const date = document.getElementById("filterDate").value;
+      const q = searchTerm.trim().toLowerCase();
+      return allComplaints.filter((item) => {
+        const categoryMatch = !category || item.category === category;
+        const statusMatch = !status || item.status === status;
+        const dateMatch = !date || String(item.createdAt || "").slice(0, 10) === date;
+        const searchMatch =
+          !q ||
+          String(item.complaintId || "").toLowerCase().includes(q) ||
+          String(item.category || "").toLowerCase().includes(q) ||
+          String(item.description || "").toLowerCase().includes(q) ||
+          String(item.status || "").toLowerCase().includes(q);
+        return categoryMatch && statusMatch && dateMatch && searchMatch;
+      });
+    }
+
+    function renderComplaintTable() {
+      const filtered = getFilteredComplaints();
+      filteredCount.textContent = `${filtered.length} case${filtered.length === 1 ? "" : "s"}`;
+      if (!filtered.length) {
+        complaintTableBody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">No complaints found.</td></tr>`;
+        return;
+      }
+
+      complaintTableBody.innerHTML = filtered.map((item) => `
+        <tr class="hover:bg-slate-50/80 transition">
+          <td class="px-4 py-3 font-semibold text-slate-900">${item.complaintId}</td>
+          <td class="px-4 py-3 text-slate-700">${item.category || "-"}</td>
+          <td class="px-4 py-3 text-slate-700">${toLocationText(item)}</td>
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(item.status)}">${item.status}</span>
+          </td>
+          <td class="px-4 py-3 text-slate-600">${formatDate(item.createdAt)}</td>
+          <td class="px-4 py-3">
+            <button data-id="${item.complaintId}" class="open-case-btn rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 transition">Open Case</button>
+          </td>
+        </tr>
+      `).join("");
+
+      document.querySelectorAll(".open-case-btn").forEach((btn) => {
+        btn.addEventListener("click", () => openCase(btn.getAttribute("data-id")));
+      });
+    }
+
+    function renderTimelineFromUpdates(updates) {
+      const timelineList = document.getElementById("timelineList");
+      const items = Array.isArray(updates) ? updates : [];
+      if (!items.length) {
+        timelineList.innerHTML = `<li class="text-sm text-slate-500">No updates yet.</li>`;
+        return;
+      }
+      timelineList.innerHTML = items.map((u, idx) => `
+        <li class="relative">
+          <span class="absolute -left-[1.15rem] top-1.5 inline-flex h-3 w-3 rounded-full bg-brand-600 ring-4 ring-white"></span>
+          <div class="rounded-lg border border-slate-200 bg-white p-3">
+            <p class="text-sm text-slate-800">${u.status}${u.note ? ` - ${u.note}` : ""}</p>
+            <div class="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
+              <span>${formatDate(u.createdAt)}</span>
+              <span class="rounded bg-slate-100 px-1.5 py-0.5">${u.actorType || "system"}</span>
+              <span>#${String(idx + 1).padStart(4, "0")}</span>
+            </div>
+          </div>
+        </li>
+      `).join("");
+    }
+
+    function renderInsights() {
+      const categoryMap = {};
+      const statusMap = {};
+      const hotspotMap = {};
+      allComplaints.forEach((item) => {
+        categoryMap[item.category || "unknown"] = (categoryMap[item.category || "unknown"] || 0) + 1;
+        statusMap[item.status || "unknown"] = (statusMap[item.status || "unknown"] || 0) + 1;
+        const loc = toLocationText(item);
+        hotspotMap[loc] = (hotspotMap[loc] || 0) + 1;
+      });
+
+      const renderBars = (id, rows, colorClass) => {
+        const maxValue = Math.max(...rows.map((row) => row.value), 1);
+        document.getElementById(id).innerHTML = rows.map((row) => `
+          <div>
+            <div class="mb-1 flex items-center justify-between text-xs">
+              <span class="text-slate-600">${row.label}</span>
+              <span class="font-semibold text-slate-800">${row.value}</span>
+            </div>
+            <div class="h-2 rounded-full bg-slate-200"><div class="h-2 rounded-full ${colorClass}" style="width:${Math.max((row.value / maxValue) * 100, 6)}%"></div></div>
+          </div>
+        `).join("");
+      };
+
+      renderBars("categoryInsights", Object.entries(categoryMap).map(([label, value]) => ({ label, value })), "bg-blue-600");
+      renderBars("statusInsights", Object.entries(statusMap).map(([label, value]) => ({ label, value })), "bg-emerald-600");
+      renderBars("hotspotInsights", Object.entries(hotspotMap).slice(0, 5).map(([label, value]) => ({ label, value })), "bg-amber-500");
+
+      const resolved = allComplaints.filter((c) => c.status === "resolved" && c.createdAt && c.resolvedAt);
+      const avgHours = resolved.length
+        ? Math.round(resolved.reduce((sum, c) => sum + ((new Date(c.resolvedAt) - new Date(c.createdAt)) / 3600000), 0) / resolved.length)
+        : 0;
+      document.getElementById("avgResolutionValue").textContent = resolved.length ? `${avgHours} hours` : "--";
+      document.getElementById("avgResolutionHint").textContent = resolved.length ? `Based on ${resolved.length} resolved cases` : "No resolved cases yet";
+      document.getElementById("avgResolutionBar").style.width = `${Math.min((avgHours / 72) * 100, 100)}%`;
+
+      document.getElementById("statNew").textContent = statusMap["new"] || 0;
+      document.getElementById("statInProgress").textContent = statusMap["in_progress"] || 0;
+      document.getElementById("statAwaiting").textContent = (statusMap["acknowledged"] || 0) + (statusMap["assigned"] || 0);
+      document.getElementById("statResolved").textContent = statusMap["resolved"] || 0;
+      // Just a mock stat since we don't have an escalated field natively
+      document.getElementById("statEscalated").textContent = allComplaints.filter(c => c.category === "Safety" || c.sharePublic).length;
+    }
+
+    function openCase(id) {
+      const item = allComplaints.find((complaint) => complaint.complaintId === id);
+      if (!item) return;
+      currentComplaint = item;
+      document.getElementById("caseHeaderId").textContent = `Complaint ${item.complaintId}`;
+      document.getElementById("caseHeaderStatus").textContent = item.status;
+      document.getElementById("caseHeaderStatus").className = `inline-flex items-center rounded-full border px-2 py-0.5 font-medium ${getStatusBadgeClass(item.status)}`;
+      document.getElementById("caseHeaderSeverity").textContent = item.sharePublic ? "Public" : "Private";
+      document.getElementById("caseHeaderSeverity").className = "inline-flex items-center rounded-full border px-2 py-0.5 font-medium bg-slate-100 text-slate-700 border-slate-200";
+      document.getElementById("caseHeaderCategory").textContent = item.category || "-";
+      document.getElementById("caseHeaderLocation").textContent = toLocationText(item);
+      document.getElementById("caseHeaderSubmitted").textContent = formatDate(item.createdAt);
+      document.getElementById("caseHeaderSla").textContent = item.status === "resolved" ? "Resolved" : "Active";
+      document.getElementById("caseOverdueAlert").classList.add("hidden");
+      document.getElementById("aiSummaryText").textContent = item.description || "No description provided.";
+      document.getElementById("aiIssueType").textContent = item.category || "General complaint";
+      document.getElementById("aiAffectedGroup").textContent = "Citizen reporters";
+      document.getElementById("aiDepartment").textContent = "Authority";
+      document.getElementById("aiConfidence").textContent = "N/A";
+      document.getElementById("aiTags").innerHTML = `<span class="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700">#${item.status}</span>`;
+      document.getElementById("originalTranscript").textContent = item.description || "-";
+      document.getElementById("translatedSummary").textContent = item.description || "-";
+      document.getElementById("attachmentThumbs").innerHTML = item.photoUrl
+        ? `<a href="${apiConfig.baseUrl}${item.photoUrl}" target="_blank" class="rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-brand-700 underline">Open photo/proof</a>`
+        : `<p class="text-xs text-slate-500">No attachment</p>`;
+      document.getElementById("reporterName").textContent = "Citizen";
+      document.getElementById("reporterSource").textContent = "Mobile app";
+      document.getElementById("reporterPhone").textContent = item.citizenPhone || "Not shared";
+      document.getElementById("reporterArea").textContent = toLocationText(item);
+      document.getElementById("validationStatus").textContent = "N/A";
+      document.getElementById("validationResponses").textContent = "0";
+      document.getElementById("validationSplit").textContent = "-";
+      document.getElementById("validationScore").textContent = "-";
+      document.getElementById("validatorPreview").textContent = "-";
+      document.getElementById("validatorComments").textContent = "-";
+      document.getElementById("validationFlag").classList.add("hidden");
+      renderTimelineFromUpdates(item.updates);
+      responseStatus.value = item.status === "new" ? "acknowledged" : item.status;
+      responseNote.value = "";
+      caseWorkspace.classList.remove("hidden");
+      queueActionHint.textContent = `Case ${id} loaded.`;
+      queueActionHint.className = "mt-3 text-xs text-brand-700";
+      caseWorkspace.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function fetchComplaints() {
+      const res = await fetch(`${apiConfig.baseUrl}/api/complaints`, {
+        headers: { "x-api-key": apiConfig.apiKey }
+      });
+      if (!res.ok) throw new Error("Unable to fetch complaints. Check API key/backend URL.");
+      const data = await res.json();
+      allComplaints = Array.isArray(data.complaints) ? data.complaints : [];
+      renderComplaintTable();
+      renderInsights();
+    }
+
+    async function submitAuthorityResponse(event) {
+      event.preventDefault();
+      if (!currentComplaint) {
+        actionFeedback.textContent = "Open a complaint first.";
+        actionFeedback.className = "mt-3 text-xs text-rose-600";
+        return;
+      }
+      const status = responseStatus.value;
+      const note = responseNote.value.trim();
+      if (!status || !note) return;
+      submitResponseBtn.disabled = true;
+      submitResponseBtn.textContent = "Submitting...";
+      try {
+        const formData = new FormData();
+        formData.append("status", status);
+        formData.append("note", note);
+        if (responseProof.files[0]) formData.append("proof", responseProof.files[0]);
+        const res = await fetch(`${apiConfig.baseUrl}/api/complaints/${currentComplaint.complaintId}`, {
+          method: "PUT",
+          headers: { "x-api-key": apiConfig.apiKey },
+          body: formData
+        });
+        if (!res.ok) {
+          let errMsg = `Server error ${res.status}`;
+          try {
+            const errData = await res.json();
+            if (errData && errData.error) errMsg = errData.error;
+          } catch (_) {}
+          throw new Error(errMsg);
+        }
+        actionFeedback.textContent = "Authority response saved successfully.";
+        actionFeedback.className = "mt-3 text-xs text-emerald-700";
+        await fetchComplaints();
+        openCase(currentComplaint.complaintId);
+      } catch (err) {
+        actionFeedback.textContent = err.message || "Failed to submit response.";
+        actionFeedback.className = "mt-3 text-xs text-rose-700";
+      } finally {
+        submitResponseBtn.disabled = false;
+        submitResponseBtn.textContent = "Submit Response";
+      }
+    }
+
+    ["filterCategory", "filterStatus", "filterDate"].forEach((id) => {
+      document.getElementById(id).addEventListener("change", renderComplaintTable);
+    });
+    if (globalSearch) globalSearch.addEventListener("input", (event) => {
+      searchTerm = event.target.value || "";
+      renderComplaintTable();
+    });
+
+    function setDarkMode(enabled) {
+      document.documentElement.classList.toggle("dark", enabled);
+      document.body.classList.toggle("bg-slate-900", enabled);
+      document.body.classList.toggle("text-slate-200", enabled);
+      document.body.classList.toggle("bg-slate-100", !enabled);
+      document.body.classList.toggle("text-slate-800", !enabled);
+      localStorage.setItem("dtl-dark-mode", enabled ? "1" : "0");
+    }
+    if (darkModeToggle) {
+      darkModeToggle.addEventListener("click", () => setDarkMode(!document.documentElement.classList.contains("dark")));
+      setDarkMode(localStorage.getItem("dtl-dark-mode") === "1");
+    }
+    function openMobileNav() {
+      mobileNav.classList.remove("hidden");
+      mobileNavBackdrop.classList.remove("hidden");
+    }
+    function closeMobileNav() {
+      mobileNav.classList.add("hidden");
+      mobileNavBackdrop.classList.add("hidden");
+    }
+    if (openMobileNavBtn) openMobileNavBtn.addEventListener("click", openMobileNav);
+    if (closeMobileNavBtn) closeMobileNavBtn.addEventListener("click", closeMobileNav);
+    if (mobileNavBackdrop) mobileNavBackdrop.addEventListener("click", closeMobileNav);
+    document.getElementById("hideWorkspaceBtn").addEventListener("click", () => caseWorkspace.classList.add("hidden"));
+    responseForm.addEventListener("submit", submitAuthorityResponse);
+
+    const savedConfig = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (savedConfig) {
+      try {
+        const parsed = JSON.parse(savedConfig);
+        if (parsed.baseUrl) backendUrlInput.value = parsed.baseUrl;
+        if (parsed.apiKey) apiKeyInput.value = parsed.apiKey;
+      } catch (_e) {}
+    }
+
+    loginForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      apiConfig = {
+        baseUrl: backendUrlInput.value.trim().replace(/\/$/, ""),
+        apiKey: apiKeyInput.value.trim()
+      };
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(apiConfig));
+      actionFeedback.textContent = "";
+      try {
+        await fetchComplaints();
+        loginView.classList.add("hidden");
+        dashboardView.classList.remove("hidden");
+      } catch (err) {
+        alert(err.message || "Login failed. Check backend URL and API key.");
+      }
+    });
+  </script>
+</body>
+</html>
