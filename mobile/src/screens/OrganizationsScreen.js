@@ -14,6 +14,8 @@ import { backendFetch } from "../api/backend";
 const TYPE_COLORS = {
   NGO: { bg: "#dcfce7", fg: "#166534", icon: "people" },
   CSR: { bg: "#dbeafe", fg: "#1e40af", icon: "business" },
+  SDG: { bg: "#fef2f2", fg: "#991b1b", icon: "globe" },
+  ABVP: { bg: "#fff7ed", fg: "#9a3412", icon: "school" },
   GOV_PARTNER: { bg: "#fef3c7", fg: "#92400e", icon: "shield" },
 };
 
@@ -151,7 +153,7 @@ export default function OrganizationsScreen() {
 
       {/* Filter pills */}
       <View style={styles.filterRow}>
-        {["ALL", "NGO", "CSR"].map((f) => (
+        {["ALL", "NGO", "CSR", "SDG", "ABVP"].map((f) => (
           <Pressable
             key={f}
             style={[styles.filterPill, filter === f && styles.filterPillActive]}

@@ -7,7 +7,7 @@ const organizationSchema = new mongoose.Schema(
     slug: { type: String, unique: true, index: true, required: true, trim: true, lowercase: true },
     type: {
       type: String,
-      enum: ["NGO", "CSR", "GOV_PARTNER"],
+      enum: ["NGO", "CSR", "GOV_PARTNER", "SDG", "ABVP"],
       required: true,
       index: true,
     },

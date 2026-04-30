@@ -41,37 +41,8 @@ app.use(express.json({ limit: "10mb" }));
 // Serve uploaded files for MVP development.
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
-// Resolve authority dashboard HTML reliably (lives at repo root: d:\AuthDemo\index.html)
-const authorityHtmlDir = path.resolve(__dirname, "..", "..", "..");
-const authorityHtmlPath = path.join(authorityHtmlDir, "index.html");
-const ngoDashboardPath = path.join(authorityHtmlDir, "ngo-dashboard.html");
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// Serve the authority dashboard HTML + static assets in the same directory
-app.use("/authority-assets", express.static(authorityHtmlDir));
-app.get("/authority", (_req, res) => {
-  res.sendFile(authorityHtmlPath, (err) => {
-    if (err) {
-      // eslint-disable-next-line no-console
-      console.error("Authority HTML not found at:", authorityHtmlPath, err.message);
-      res.status(404).send(
-        `Authority dashboard not found. Expected at: ${authorityHtmlPath}`
-      );
-    }
-  });
-});
-
-// NGO Officer Dashboard
-app.get("/ngo-dashboard", (_req, res) => {
-  res.sendFile(ngoDashboardPath, (err) => {
-    if (err) {
-      // eslint-disable-next-line no-console
-      console.error("NGO Dashboard HTML not found at:", ngoDashboardPath, err.message);
-      res.status(404).send(
-        `NGO Dashboard not found. Expected at: ${ngoDashboardPath}`
-      );
-    }
-  });
-});
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
@@ -108,12 +79,6 @@ async function seedOrganizations() {
   const { Organization } = require("./models/Organization");
   const { User } = require("./models/User");
 
-  const count = await Organization.countDocuments();
-  if (count > 0) return; // Already seeded
-
-  // eslint-disable-next-line no-console
-  console.log("  Seeding demo NGO/CSR organizations...");
-
   const orgs = [
     {
       orgId: "ngo-janshakti",
@@ -146,6 +111,46 @@ async function seedOrganizations() {
       focusAreas: ["road_safety", "infrastructure", "public_works"],
     },
     {
+      orgId: "sdg-action",
+      name: "SDG Action Network",
+      slug: "sdg-action-network",
+      type: "SDG",
+      description: "Advocacy and implementation group for United Nations Sustainable Development Goals (SDGs) at local levels.",
+      contactEmail: "global@sdg-action.net",
+      jurisdictions: ["All India", "Global"],
+      focusAreas: ["education", "environment", "equality", "poverty"],
+    },
+    {
+      orgId: "sdg-impact",
+      name: "SDG Impact Partners",
+      slug: "sdg-impact-partners",
+      type: "SDG",
+      description: "Corporate initiative funding large-scale sustainable development projects aligned with UN SDGs.",
+      contactEmail: "csr@sdg-impact.net",
+      jurisdictions: ["All India"],
+      focusAreas: ["environment", "poverty", "clean_energy"],
+    },
+    {
+      orgId: "abvp-welfare",
+      name: "ABVP Student Welfare",
+      slug: "abvp-student-welfare",
+      type: "ABVP",
+      description: "Student organization focused on educational reforms, student rights, and social service initiatives across campuses.",
+      contactEmail: "info@abvp.org.in",
+      jurisdictions: ["All India", "Rajasthan"],
+      focusAreas: ["education", "youth_empowerment", "social_service"],
+    },
+    {
+      orgId: "abvp-digital",
+      name: "ABVP Digital Outreach",
+      slug: "abvp-digital-outreach",
+      type: "ABVP",
+      description: "A digital outreach and CSR wing focused on tech-education and bridge-building for rural students.",
+      contactEmail: "tech@abvp.org.in",
+      jurisdictions: ["Rajasthan", "Delhi"],
+      focusAreas: ["education", "digital_literacy"],
+    },
+    {
       orgId: "csr-tatafoundation",
       name: "Tata Community Impact",
       slug: "tata-community-impact",
@@ -167,32 +172,68 @@ async function seedOrganizations() {
     },
   ];
 
+  let seededCount = 0;
   for (const org of orgs) {
-    await Organization.create(org);
+    const existing = await Organization.findOne({ orgId: org.orgId });
+    if (!existing) {
+      await Organization.create(org);
+      seededCount++;
+    } else {
+      // Update type in case it changed (e.g. from NGO to SDG)
+      existing.type = org.type;
+      await existing.save();
+    }
+  }
+
+  if (seededCount > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`  Seeded ${seededCount} new organizations.`);
   }
 
   // Create a demo NGO officer account (if JWT secret is set)
   if (process.env.AUTH_JWT_SECRET) {
     const janshaktiOrg = await Organization.findOne({ orgId: "ngo-janshakti" });
     if (janshaktiOrg) {
-      const existing = await User.findOne({ phone: "ngo-officer-1" });
+      const existing = await User.findOne({ email: "ngo-officer@janshakti.org" });
       if (!existing) {
         const passwordHash = await bcrypt.hash("ngo123", 10);
         await User.create({
-          phone: "ngo-officer-1",
+          email: "ngo-officer@janshakti.org",
           name: "Priya Sharma",
           role: "ngo_officer",
           organization: janshaktiOrg._id,
           passwordHash,
+          isVerified: true,
         });
         // eslint-disable-next-line no-console
-        console.log("  Created demo NGO officer: phone=ngo-officer-1 password=ngo123");
+        console.log("  Created demo NGO officer: email=ngo-officer@janshakti.org password=ngo123");
       }
     }
   }
 
   // eslint-disable-next-line no-console
   console.log(`  Seeded ${orgs.length} organizations\n`);
+}
+
+async function seedAuthority() {
+  const { User } = require("./models/User");
+  const email = "authority@janawaaj.in";
+  const existing = await User.findOne({ email });
+  if (!existing) {
+    const passwordHash = await bcrypt.hash("authority-pass-2026", 10);
+    await User.create({
+      email,
+      name: "General Authority",
+      role: "authority",
+      departmentId: "General",
+      passwordHash,
+      isVerified: true,
+    });
+    // eslint-disable-next-line no-console
+    console.log(`\n  [SEED] Super Authority Created:`);
+    console.log(`  Email: ${email}`);
+    console.log(`  Password: authority-pass-2026\n`);
+  }
 }
 
 async function main() {
@@ -203,6 +244,7 @@ async function main() {
 
   // Seed demo data
   await seedOrganizations();
+  await seedAuthority();
 
   const port = Number(process.env.PORT || 4000);
   const host = "0.0.0.0"; // Bind to all interfaces so phone on LAN can connect

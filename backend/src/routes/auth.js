@@ -6,6 +6,7 @@ const { z } = require("zod");
 const bcrypt = require("bcryptjs");
 
 const { User } = require("../models/User");
+const { sendVerificationEmail } = require("../services/emailService");
 
 const router = express.Router();
 
@@ -41,7 +42,8 @@ router.post("/token", (req, res) => {
 router.post("/register", async (req, res, next) => {
   try {
     const registerSchema = z.object({
-      phone: z.string().trim().min(6).max(20),
+      email: z.string().email(),
+      name: z.string().trim().min(2),
       departmentId: z.string().trim().min(1).max(60),
       password: z.string().trim().min(6).max(100),
     });
@@ -57,22 +59,78 @@ router.post("/register", async (req, res, next) => {
       });
     }
 
-    const phone = parsed.data.phone;
-    const departmentId = parsed.data.departmentId;
+    const { email, name, departmentId, password } = parsed.data;
+    
+    // Check if user already exists
+    const existing = await User.findOne({ email });
+    if (existing) {
+      if (existing.isVerified) {
+        return res.status(409).json({ error: "Account already exists" });
+      }
+      // If not verified, we'll just update their details and send a new code
+      existing.name = name;
+      existing.departmentId = departmentId;
+      existing.passwordHash = await bcrypt.hash(password, 10);
+    }
 
-    const existing = await User.findOne({ phone });
-    if (existing) return res.status(409).json({ error: "Account already exists" });
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
-    const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+    if (existing) {
+      existing.verificationCode = verificationCode;
+      existing.verificationCodeExpires = verificationCodeExpires;
+      await existing.save();
+    } else {
+      await User.create({
+        email,
+        name,
+        role: "authority",
+        departmentId,
+        passwordHash: await bcrypt.hash(password, 10),
+        isVerified: false,
+        verificationCode,
+        verificationCodeExpires,
+      });
+    }
 
-    await User.create({
-      phone,
-      role: "authority",
-      departmentId,
-      passwordHash,
+    await sendVerificationEmail(email, verificationCode);
+
+    return res.json({ ok: true, message: "Verification code sent to email" });
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.post("/verify", async (req, res, next) => {
+  try {
+    const verifySchema = z.object({
+      email: z.string().email(),
+      code: z.string().length(6),
     });
 
-    return res.json({ ok: true });
+    const parsed = verifySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid input" });
+
+    const { email, code } = parsed.data;
+    const user = await User.findOne({ email });
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (user.isVerified) return res.status(400).json({ error: "Email already verified" });
+    
+    if (user.verificationCode !== code) {
+      return res.status(400).json({ error: "Invalid verification code" });
+    }
+
+    if (new Date() > user.verificationCodeExpires) {
+      return res.status(400).json({ error: "Verification code expired" });
+    }
+
+    user.isVerified = true;
+    user.verificationCode = null;
+    user.verificationCodeExpires = null;
+    await user.save();
+
+    return res.json({ ok: true, message: "Email verified successfully" });
   } catch (e) {
     return next(e);
   }
@@ -81,7 +139,7 @@ router.post("/register", async (req, res, next) => {
 router.post("/login", async (req, res, next) => {
   try {
     const loginSchema = z.object({
-      phone: z.string().trim().min(1).max(60),
+      email: z.string().email(),
       password: z.string().trim().min(1),
     });
 
@@ -94,9 +152,13 @@ router.post("/login", async (req, res, next) => {
       return res.status(500).json({ error: "Server JWT secret not configured (AUTH_JWT_SECRET)." });
     }
 
-    const phone = parsed.data.phone;
-    const user = await User.findOne({ phone }).populate("organization");
+    const { email, password } = parsed.data;
+    const user = await User.findOne({ email }).populate("organization");
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
+    if (!user.isVerified) {
+      return res.status(401).json({ error: "Please verify your email before logging in." });
+    }
 
     const ok = await bcrypt.compare(parsed.data.password, user.passwordHash || "");
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });

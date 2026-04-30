@@ -297,7 +297,8 @@ export default function FileComplaintScreen({ navigation }) {
     (async () => {
       try {
         setLoadingNgos(true);
-        const data = await backendFetch("/api/organizations?type=NGO");
+        // Fetch both NGO and CSR organizations
+        const data = await backendFetch("/api/organizations");
         setNgos(Array.isArray(data?.organizations) ? data.organizations : []);
       } catch {
         // NGO list is optional
@@ -639,6 +640,7 @@ export default function FileComplaintScreen({ navigation }) {
             {[
               { key: "GOVERNMENT", label: t("target_Government"), icon: "shield" },
               { key: "NGO", label: t("target_NGO"), icon: "people" },
+              { key: "CSR", label: "CSR Partner", icon: "business" },
               { key: "BOTH", label: t("target_Both"), icon: "git-merge" },
             ].map((ch) => (
               <Pressable
@@ -678,7 +680,12 @@ export default function FileComplaintScreen({ navigation }) {
                       color={selectedNgoId === ngo.orgId ? "#0f766e" : "#94a3b8"}
                     />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.ngoCardName}>{ngo.name}</Text>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                        <Text style={styles.ngoCardName}>{ngo.name}</Text>
+                        <View style={[styles.badge, { backgroundColor: ngo.type === "CSR" ? "#eff6ff" : "#f0fdf4" }]}>
+                          <Text style={[styles.badgeText, { color: ngo.type === "CSR" ? "#1d4ed8" : "#16a34a" }]}>{ngo.type}</Text>
+                        </View>
+                      </View>
                       <Text style={styles.ngoCardAreas}>
                         {(ngo.focusAreas || []).slice(0, 3).map((a) => a.replace(/_/g, " ")).join(", ")}
                       </Text>
@@ -933,6 +940,8 @@ const styles = StyleSheet.create({
   ngoCardSelected: { borderColor: "#0f766e", backgroundColor: "#f0fdfa" },
   ngoCardRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   ngoCardName: { fontWeight: "800", fontSize: 14, color: "#1e293b" },
+  badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  badgeText: { fontSize: 10, fontWeight: "800" },
   ngoCardAreas: { fontSize: 12, color: "#64748b", marginTop: 2 },
 
   locationBox: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 12, padding: 14, backgroundColor: "#fff" },

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -11,113 +13,265 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { WebView } from "react-native-webview";
 import { useLanguage } from "../i18n";
 
 export default function AuthorityScreen() {
-  const [officialId, setOfficialId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loggedInUrl, setLoggedInUrl] = useState(null);
-  const [htmlContent, setHtmlContent] = useState(null);
-  const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [token, setToken] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState("");
+  const [complaints, setComplaints] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [updateLoading, setUpdateLoading] = useState(false);
   const { t } = useLanguage();
 
-  async function openDashboard() {
+  async function handleLogin() {
     setDashboardError("");
-    setLoadingDashboard(true);
+    setLoading(true);
     try {
       const { getBackendUrl } = await import("../api/backend");
       const base = await getBackendUrl();
-      const url = `${base}/authority`;
+      
+      const res = await fetch(`${base}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed");
 
-      if (Platform.OS !== "web") {
-        // Fetch the HTML and inject it into WebView to avoid CORS / connection issues
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (!res.ok) {
-          throw new Error(`Server returned HTTP ${res.status}`);
-        }
-        const text = await res.text();
-        if (!text || text.length < 50) {
-          throw new Error("Empty or invalid response from server");
-        }
-        setHtmlContent(text);
-      }
-      setLoggedInUrl(url);
+      setToken(data.token);
+      setUser({ name: data.name || "Officer", departmentId: data.departmentId || "General" });
+      fetchComplaints(data.token);
     } catch (e) {
-      let msg = e?.message || "Failed to load dashboard";
-      if (e.name === "AbortError") {
-        msg = "Connection timed out. Make sure the backend is running and reachable.";
-      } else if (msg.includes("Network request failed")) {
-        msg = "Cannot connect to the server. Check your backend URL in Profile settings.";
-      }
-      setDashboardError(msg);
+      setDashboardError(e.message);
     } finally {
-      setLoadingDashboard(false);
+      setLoading(false);
     }
   }
 
-  // ── Dashboard loaded: show WebView ─────────────────────────────────────────
-  if (loggedInUrl) {
-    if (Platform.OS === "web") {
-      return (
-        <iframe
-          src={loggedInUrl}
-          style={{ width: "100%", height: "100%", border: "none" }}
-          title="Authority Dashboard"
-        />
-      );
+  async function fetchComplaints(authToken = token) {
+    if (!authToken) return;
+    setRefreshing(true);
+    try {
+      const { getBackendUrl } = await import("../api/backend");
+      const base = await getBackendUrl();
+      const res = await fetch(`${base}/api/complaints`, {
+        headers: { "Authorization": `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setComplaints(data.complaints || []);
+      }
+    } catch (e) {
+      console.warn("Fetch failed:", e);
+    } finally {
+      setRefreshing(false);
     }
+  }
 
+  async function updateComplaint(status) {
+    if (!selectedComplaint || !token) return;
+    setUpdateLoading(true);
+    try {
+      const { getBackendUrl } = await import("../api/backend");
+      const base = await getBackendUrl();
+      
+      const formData = new FormData();
+      formData.append("status", status);
+      formData.append("officialNote", "Updated via Mobile Dashboard");
+
+      const res = await fetch(`${base}/api/complaints/${selectedComplaint.complaintId}`, {
+        method: "PUT",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData
+      });
+
+      if (res.ok) {
+        setSelectedComplaint(null);
+        fetchComplaints();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Update failed");
+      }
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setUpdateLoading(false);
+    }
+  }
+
+  const filteredComplaints = complaints.filter(c => 
+    selectedStatus === "all" ? true : c.status === selectedStatus
+  );
+
+  const stats = {
+    total: complaints.length,
+    new: complaints.filter(c => c.status === "new").length,
+    active: complaints.filter(c => c.status === "in_progress" || c.status === "assigned").length,
+    resolved: complaints.filter(c => c.status === "resolved").length,
+  };
+
+  function getStatusColor(status) {
+    switch (status) {
+      case "new": return "#3b82f6";
+      case "in_progress": return "#f59e0b";
+      case "resolved": return "#10b981";
+      case "rejected": return "#ef4444";
+      default: return "#64748b";
+    }
+  }
+
+  function getUrgencyColor(u) {
+    const val = (u || "").toLowerCase();
+    if (val === "very high") return "#dc2626";
+    if (val === "high") return "#f97316";
+    if (val === "medium") return "#eab308";
+    return "#22c55e";
+  }
+
+  function getUrgencyWidth(u) {
+    const val = (u || "").toLowerCase();
+    if (val === "very high") return "100%";
+    if (val === "high") return "75%";
+    if (val === "medium") return "50%";
+    return "25%";
+  }
+
+  if (token) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#f1f5f9" }}>
-        {htmlContent ? (
-          <WebView
-            source={{ html: htmlContent, baseUrl: loggedInUrl }}
-            style={{ flex: 1 }}
-            originWhitelist={["*"]}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            allowsInlineMediaPlayback={true}
-            mixedContentMode="always"
-            onError={(syntheticEvent) => {
-              const { nativeEvent } = syntheticEvent;
-              console.warn("WebView error:", nativeEvent);
-            }}
-            renderError={(errorDomain, errorCode, errorDesc) => (
-              <View style={styles.webviewError}>
-                <Ionicons name="warning" size={36} color="#dc2626" />
-                <Text style={styles.webviewErrorTitle}>Dashboard Loading Issue</Text>
-                <Text style={styles.webviewErrorText}>{errorDesc || "Unknown error"}</Text>
-                <Pressable
-                  style={styles.retryBtn}
-                  onPress={() => {
-                    setLoggedInUrl(null);
-                    setHtmlContent(null);
-                    setDashboardError("");
-                  }}
-                >
-                  <Text style={styles.retryBtnText}>Go Back</Text>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.welcomeText}>Hello, {user?.name}</Text>
+            <Text style={styles.deptText}>{user?.departmentId} Dept.</Text>
+          </View>
+          <Pressable style={styles.logoutBtn} onPress={() => setToken(null)}>
+            <Ionicons name="log-out-outline" size={20} color="#64748b" />
+          </Pressable>
+        </View>
+
+        <View style={{ backgroundColor: "#fff" }}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.statsContainer}
+          >
+            <View style={[styles.statCard, { backgroundColor: "#f0fdfa" }]}>
+              <Text style={[styles.statValue, { color: "#0f766e" }]}>{stats.total}</Text>
+              <Text style={styles.statLabel}>Total</Text>
+            </View>
+            <View style={[styles.statCard, { backgroundColor: "#fef2f2" }]}>
+              <Text style={[styles.statValue, { color: "#dc2626" }]}>{stats.new}</Text>
+              <Text style={styles.statLabel}>New</Text>
+            </View>
+            <View style={[styles.statCard, { backgroundColor: "#eff6ff" }]}>
+              <Text style={[styles.statValue, { color: "#1d4ed8" }]}>{stats.active}</Text>
+              <Text style={styles.statLabel}>Active</Text>
+            </View>
+            <View style={[styles.statCard, { backgroundColor: "#f0fdf4" }]}>
+              <Text style={[styles.statValue, { color: "#16a34a" }]}>{stats.resolved}</Text>
+              <Text style={styles.statLabel}>Resolved</Text>
+            </View>
+          </ScrollView>
+        </View>
+
+        <View style={styles.filterRow}>
+          {["all", "new", "in_progress", "resolved"].map((s) => (
+            <Pressable 
+              key={s} 
+              style={[styles.filterTab, selectedStatus === s && styles.filterTabActive]}
+              onPress={() => setSelectedStatus(s)}
+            >
+              <Text style={[styles.filterTabText, selectedStatus === s && styles.filterTabTextActive]}>
+                {s.charAt(0).toUpperCase() + s.slice(1).replace("_", " ")}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <FlatList
+          data={filteredComplaints}
+          keyExtractor={(item) => item.complaintId}
+          contentContainerStyle={styles.listContainer}
+          onRefresh={fetchComplaints}
+          refreshing={refreshing}
+          renderItem={({ item }) => (
+            <Pressable style={styles.complaintCard} onPress={() => setSelectedComplaint(item)}>
+              <View style={styles.complaintHeader}>
+                <Text style={styles.complaintId}>{item.complaintId}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + "20" }]}>
+                  <Text style={[styles.statusBadgeText, { color: getStatusColor(item.status) }]}>
+                    {item.status.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.complaintCategory}>{item.category || "General"}</Text>
+              <View style={styles.complaintMeta}>
+                <Ionicons name="location-outline" size={14} color="#64748b" />
+                <Text style={styles.metaText}>{item.locationMention || "Unknown Location"}</Text>
+              </View>
+              <Text style={styles.complaintSummary} numberOfLines={2}>{item.summary}</Text>
+              <View style={styles.urgencyBar}>
+                <View style={[styles.urgencyIndicator, { width: getUrgencyWidth(item.urgency), backgroundColor: getUrgencyColor(item.urgency) }]} />
+              </View>
+            </Pressable>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
+              <Text style={styles.emptyText}>No complaints found</Text>
+            </View>
+          }
+        />
+
+        <Modal visible={!!selectedComplaint} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Update Complaint</Text>
+                <Pressable onPress={() => setSelectedComplaint(null)}>
+                  <Ionicons name="close" size={24} color="#64748b" />
                 </Pressable>
               </View>
-            )}
-          />
-        ) : (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color="#0f766e" />
-            <Text style={styles.loadingText}>Loading dashboard…</Text>
+              
+              {selectedComplaint && (
+                <ScrollView style={styles.modalScroll}>
+                  <Text style={styles.modalLabel}>ID: {selectedComplaint.complaintId}</Text>
+                  <Text style={styles.modalSummary}>{selectedComplaint.summary}</Text>
+                  
+                  <Text style={styles.modalActionLabel}>Set Status:</Text>
+                  <View style={styles.actionButtons}>
+                    {["in_progress", "resolved", "rejected"].map((s) => (
+                      <Pressable 
+                        key={s} 
+                        style={[styles.actionBtn, { borderColor: getStatusColor(s) }]}
+                        onPress={() => updateComplaint(s)}
+                      >
+                        <Text style={[styles.actionBtnText, { color: getStatusColor(s) }]}>
+                          Mark as {s.replace("_", " ")}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              )}
+              {updateLoading && (
+                <View style={styles.modalLoading}>
+                  <ActivityIndicator color="#0f766e" />
+                </View>
+              )}
+            </View>
           </View>
-        )}
+        </Modal>
       </SafeAreaView>
     );
   }
 
-  // ── Login form ─────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -132,7 +286,6 @@ export default function AuthorityScreen() {
             </View>
           </View>
 
-          {/* Error banner */}
           {dashboardError ? (
             <View style={styles.errorBanner}>
               <Ionicons name="alert-circle" size={18} color="#dc2626" />
@@ -144,8 +297,8 @@ export default function AuthorityScreen() {
             <Text style={styles.fieldLabel}>Official Email / ID</Text>
             <TextInput
               style={styles.input}
-              value={officialId}
-              onChangeText={setOfficialId}
+              value={email}
+              onChangeText={setEmail}
               placeholder="officer@district.gov.in"
               autoCapitalize="none"
               keyboardType="email-address"
@@ -164,11 +317,11 @@ export default function AuthorityScreen() {
           </View>
 
           <Pressable
-            style={[styles.loginBtn, (!officialId || !password || loadingDashboard) && { opacity: 0.6 }]}
-            onPress={openDashboard}
-            disabled={!officialId || !password || loadingDashboard}
+            style={[styles.loginBtn, (!email || !password || loading) && { opacity: 0.6 }]}
+            onPress={handleLogin}
+            disabled={!email || !password || loading}
           >
-            {loadingDashboard ? (
+            {loading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
               <>
@@ -184,13 +337,6 @@ export default function AuthorityScreen() {
               Secure access: All actions are logged in a tamper-proof audit trail.
             </Text>
           </View>
-        </View>
-
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle" size={18} color="#1d4ed8" />
-          <Text style={styles.infoText}>
-            The dashboard will open directly inside this app.
-          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -259,19 +405,75 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   secureText: { color: "#065f46", fontSize: 12, flex: 1, lineHeight: 18 },
-  infoBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    backgroundColor: "#eff6ff",
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
-    borderRadius: 12,
-    padding: 12,
-  },
-  infoText: { color: "#1d4ed8", fontSize: 12, flex: 1, lineHeight: 18 },
 
-  // Error states
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  welcomeText: { fontSize: 18, fontWeight: "900", color: "#1e293b" },
+  deptText: { fontSize: 12, color: "#64748b", fontWeight: "600" },
+  logoutBtn: { padding: 8, borderRadius: 8, backgroundColor: "#f8fafc" },
+  
+  statsContainer: { padding: 16, gap: 12 },
+  statCard: {
+    width: 100,
+    height: 80,
+    borderRadius: 16,
+    padding: 12,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+  statValue: { fontSize: 22, fontWeight: "900" },
+  statLabel: { fontSize: 12, color: "#64748b", fontWeight: "600", marginTop: 2 },
+
+  filterRow: {
+    flexDirection: "row",
+    padding: 16,
+    gap: 8,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  filterTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "#f1f5f9",
+  },
+  filterTabActive: { backgroundColor: "#0f766e" },
+  filterTabText: { fontSize: 12, color: "#64748b", fontWeight: "600" },
+  filterTabTextActive: { color: "#fff" },
+
+  listContainer: { padding: 16, paddingBottom: 40, gap: 16 },
+  complaintCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  complaintHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  complaintId: { fontSize: 14, fontWeight: "900", color: "#0f766e" },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  statusBadgeText: { fontSize: 10, fontWeight: "800" },
+  complaintCategory: { fontSize: 13, fontWeight: "700", color: "#334155", marginBottom: 4 },
+  complaintMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
+  metaText: { fontSize: 12, color: "#64748b" },
+  complaintSummary: { fontSize: 13, color: "#475569", lineHeight: 18, marginBottom: 12 },
+  urgencyBar: { height: 4, backgroundColor: "#f1f5f9", borderRadius: 2, overflow: "hidden" },
+  urgencyIndicator: { height: "100%" },
+
+  emptyBox: { padding: 40, alignItems: "center", justifyContent: "center", gap: 12 },
+  emptyText: { color: "#94a3b8", fontWeight: "600" },
+
   errorBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -281,30 +483,20 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
     borderRadius: 10,
     padding: 12,
+    marginBottom: 8,
   },
   errorText: { color: "#dc2626", fontWeight: "600", flex: 1, lineHeight: 20, fontSize: 13 },
 
-  // WebView error fallback
-  webviewError: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f1f5f9",
-    padding: 32,
-    gap: 12,
-  },
-  webviewErrorTitle: { fontSize: 17, fontWeight: "900", color: "#1e293b" },
-  webviewErrorText: { fontSize: 13, color: "#64748b", textAlign: "center", lineHeight: 20 },
-  retryBtn: {
-    backgroundColor: "#0f766e",
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    marginTop: 8,
-  },
-  retryBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-
-  // Loading state
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
-  loadingText: { color: "#64748b", fontSize: 14 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: "85%" },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontWeight: "900", color: "#1e293b" },
+  modalLabel: { fontSize: 14, fontWeight: "700", color: "#0f766e", marginBottom: 8 },
+  modalSummary: { fontSize: 14, color: "#475569", lineHeight: 22, marginBottom: 20, backgroundColor: "#f8fafc", padding: 16, borderRadius: 12 },
+  modalActionLabel: { fontSize: 13, fontWeight: "700", color: "#64748b", marginBottom: 12 },
+  actionButtons: { gap: 12 },
+  actionBtn: { borderWidth: 2, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  actionBtnText: { fontWeight: "800", fontSize: 14 },
+  modalLoading: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(255,255,255,0.7)", justifyContent: "center", alignItems: "center" },
+  modalScroll: { marginBottom: 20 },
 });
